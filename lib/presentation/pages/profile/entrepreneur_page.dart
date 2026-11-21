@@ -1,5 +1,7 @@
 import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:unimarket/core/router/app_routes.dart';
+import 'package:go_router/go_router.dart';
 import '../../viewmodels/profile/entrepreneur_viewmodel.dart';
 
 class EntrepreneurPage extends StatefulWidget {
@@ -155,9 +157,21 @@ class _EntrepreneurPageState extends State<EntrepreneurPage> {
                   value: vm.acceptedTerms,
                   onChanged: (v) => vm.setAcceptedTerms(v ?? false),
                 ),
-                const Expanded(
-                  child: Text(
-                    'Acepto términos y condiciones y que me contacten sobre mi registro.',
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => context.push(AppRoutes.terms),
+                    child: const Text.rich(
+                      TextSpan(
+                        text: 'Acepto los ',
+                        children: [
+                          TextSpan(
+                            text: 'términos y condiciones',
+                            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+                          ),
+                          TextSpan(text: ', incluida la comisión (0 % los primeros 2 meses, luego 1 % y 2 %).'),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],

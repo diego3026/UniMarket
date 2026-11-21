@@ -367,18 +367,34 @@ class _SellerOrderCard extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   Future<String?> _ask(BuildContext context, {required String title, required String label, String? hint,
-      bool digits = false, required String confirm}) {
+      bool digits = false, required String confirm, String? warning}) {
     final c = TextEditingController();
     return showDialog<String>(
       context: context,
       builder: (d) => AlertDialog(
         title: Text(title),
-        content: TextField(
-          controller: c,
-          autofocus: true,
-          maxLength: digits ? 4 : 200,
-          keyboardType: digits ? TextInputType.number : TextInputType.text,
-          decoration: InputDecoration(labelText: label, hintText: hint),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (warning != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(warning, style: const TextStyle(fontSize: 13)),
+              ),
+            TextField(
+              controller: c,
+              autofocus: true,
+              maxLength: digits ? 4 : 200,
+              keyboardType: digits ? TextInputType.number : TextInputType.text,
+              decoration: InputDecoration(labelText: label, hintText: hint),
+            ),
+          ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(d), child: const Text('Cancelar')),
@@ -415,7 +431,12 @@ class _SellerOrderCard extends StatelessWidget {
         title: 'Rechazar pedido #${o.id}',
         label: 'Motivo (lo verá el cliente)',
         hint: 'Ej. Se nos acabó el producto',
-        confirm: 'Rechazar pedido');
+        confirm: 'Rechazar pedido',
+        warning: o.paymentStatus == PaymentStatus.reported || o.paymentStatus == PaymentStatus.paid
+            ? 'El cliente ya reportó o confirmaste el pago. Si cancelas debes devolverle el 100 % en máximo 2 días '
+                  'hábiles y el pedido quedará en revisión.'
+            : 'Le preguntaremos al cliente si recibió el pedido. Cancelar pedidos que sí vendiste va contra los '
+                  'términos y condiciones.');
     if (reason == null) return;
     final err = await cubit.cancel(o.id, reason: reason);
     if (context.mounted) _snack(context, err ?? 'Pedido #${o.id} rechazado');

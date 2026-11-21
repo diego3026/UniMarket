@@ -13,12 +13,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/entities/product_entity.dart';
 import '../../domain/entities/user_role.dart';
-import '../../presentation/pages/addresses/add_address_page.dart';
-import '../../presentation/pages/addresses/map_address_page.dart';
+import '../../presentation/pages/addresses/location_picker_page.dart';
+import '../../presentation/pages/map/explore_map_page.dart';
+import '../../presentation/pages/legal/terms_page.dart';
+import '../../presentation/pages/commissions/admin_cancellations_page.dart';
+import '../../presentation/pages/commissions/admin_commissions_page.dart';
+import '../../presentation/pages/commissions/seller_commissions_page.dart';
+import '../../presentation/pages/profile/admin_pages/map_pins_page.dart';
 import '../../presentation/pages/admin/admin_home_page.dart';
 import '../../presentation/pages/cart/cart_page.dart';
 import '../../presentation/pages/checkout/checkout_page.dart';
-import '../../presentation/pages/dashboards/entrepreneur_dashboard.dart';
 import '../../presentation/pages/email_confirmation/email_confirmation_page.dart';
 import '../../presentation/pages/favorites/favorites_page.dart';
 import '../../presentation/pages/help/help_page.dart';
@@ -61,7 +65,7 @@ import '../../presentation/pages/seller/seller_stats_page.dart';
 import '../../presentation/pages/seller/store_settings_page.dart';
 import '../../domain/entities/market_entities.dart';
 import '../../presentation/pages/store/store_page.dart';
-import '../../presentation/viewmodels/addresses/addresses_viewmodel.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' show LatLng;
 import '../../presentation/viewmodels/auth/auth_cubit.dart';
 import '../../presentation/viewmodels/registration/registration_cubit.dart';
 import '../../presentation/widgets/shell/role_shells.dart';
@@ -124,6 +128,8 @@ GoRouter buildRouter() {
       final seenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
       final isPublic = AppRoutes.publicRoutes.contains(loc);
 
+      // Los términos se pueden leer con o sin sesión.
+      if (loc == AppRoutes.terms) return null;
       if (!seenOnboarding && loc != AppRoutes.onboarding) {
         return AppRoutes.onboarding;
       }
@@ -238,10 +244,9 @@ GoRouter buildRouter() {
       page(AppRoutes.editProfile, (_) => const EditarPerfilPage()),
       page(AppRoutes.addresses, (_) => const AddressesManagementPage()),
       page(
-        AppRoutes.addAddress,
-        (s) => AddAddressPage(initial: s.extra as Address?),
+        AppRoutes.mapAddress,
+        (s) => LocationPickerPage(initial: s.extra as LatLng?),
       ),
-      page(AppRoutes.mapAddress, (_) => const MapAddressPage()),
       page(AppRoutes.paymentMethods, (_) => const SavedPaymentMethodsPage()),
       page(AppRoutes.settings, (_) => const AjustesPage()),
       page(AppRoutes.settingsApp, (_) => const AppPreferencesPage()),
@@ -312,15 +317,6 @@ GoRouter buildRouter() {
       page(AppRoutes.sellerSchedule, (_) => seller(const SchedulePage())),
       page(AppRoutes.sellerBank, (_) => seller(const BankDataPage())),
       page(AppRoutes.sellerDocuments, (_) => seller(const DocumentsPage())),
-      page(
-        AppRoutes.sellerManagement,
-        (_) => seller(
-          Scaffold(
-            appBar: AppBar(title: const Text('Gestión del negocio')),
-            body: const EntrepreneurDashboard(),
-          ),
-        ),
-      ),
 
       // ── Administrador ───────────────────────────────────
       StatefulShellRoute.indexedStack(
@@ -361,6 +357,12 @@ GoRouter buildRouter() {
         ],
       ),
       page(AppRoutes.adminProducts, (_) => const ManageProductsPage()),
+      page(AppRoutes.adminMapPins, (_) => const MapPinsPage()),
+      page(AppRoutes.exploreMap, (_) => const ExploreMapPage()),
+      page(AppRoutes.terms, (_) => const TermsPage()),
+      page(AppRoutes.adminCommissions, (_) => const AdminCommissionsPage()),
+      page(AppRoutes.adminCancellations, (_) => const AdminCancellationsPage()),
+      page(AppRoutes.sellerCommissions, (_) => seller(const SellerCommissionsPage())),
     ],
   );
 }

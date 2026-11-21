@@ -23,8 +23,28 @@ T _enum<T extends Enum>(List<T> values, Object? name, T fallback) {
   return fallback;
 }
 
-CampusPlace placeFrom(Json j) =>
-    CampusPlace(_s(j['id']), _s(j['name']), _s(j['hint']), Offset(_d(j['x']), _d(j['y'])));
+CampusPlace placeFrom(Json j) => CampusPlace(
+  _s(j['id']),
+  _s(j['name']),
+  _s(j['hint']),
+  description: _s(j['description']),
+  kind: _enum(PlaceKind.values, j['kind'], PlaceKind.building),
+  isDeliveryPoint: j['isDeliveryPoint'] != false,
+  latitude: (j['latitude'] as num?)?.toDouble(),
+  longitude: (j['longitude'] as num?)?.toDouble(),
+  isActive: j['isActive'] != false,
+);
+
+Json placeToJson(CampusPlace p) => {
+  'name': p.name.trim(),
+  'hint': p.hint.trim(),
+  'description': p.description.trim(),
+  'kind': p.kind.name,
+  'isDeliveryPoint': p.isDeliveryPoint,
+  'latitude': p.latitude,
+  'longitude': p.longitude,
+  'isActive': p.isActive,
+};
 
 StoreEntity storeFrom(Json j) => StoreEntity(
   id: _s(j['id']),
@@ -60,6 +80,9 @@ StoreSettings settingsFrom(Json j) => StoreSettings(
   nequiPhone: _s(j['nequiPhone']),
   brebKey: _s(j['brebKey']),
   phone: _s(j['phone']),
+  address: _s(j['address']),
+  latitude: (j['latitude'] as num?)?.toDouble(),
+  longitude: (j['longitude'] as num?)?.toDouble(),
 );
 
 Json settingsToJson(StoreSettings s) => {
@@ -77,6 +100,9 @@ Json settingsToJson(StoreSettings s) => {
   'nequiPhone': s.nequiPhone.replaceAll(RegExp(r'\D'), ''),
   'brebKey': s.brebKey.trim(),
   'phone': s.phone,
+  'address': s.address.trim(),
+  'latitude': s.latitude,
+  'longitude': s.longitude,
 };
 
 ProductEntity productFrom(Json j) => ProductEntity(
@@ -176,6 +202,10 @@ MarketOrder orderFrom(Json j) {
     createdAt: _dt(j['createdAt']),
     history: history.isEmpty ? {OrderStatus.pending: _dt(j['createdAt'])} : history,
     cancelReason: _s(j['cancelReason']),
+    cancelledBy: _s(j['cancelledBy']),
+    paidCancelled: j['paidCancelled'] == true,
+    customerConfirmation: _s(j['customerConfirmation']),
+    disputeStatus: _s(j['disputeStatus']),
     rating: review == null ? null : _i(review['rating']),
     review: review == null ? '' : _s(review['comment']),
     reviewTags: review == null ? const [] : [for (final t in (review['tags'] as List? ?? const [])) t.toString()],

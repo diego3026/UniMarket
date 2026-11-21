@@ -315,6 +315,10 @@ class MarketOrdersCubit extends Cubit<List<MarketOrder>> {
   Future<String?> reportPayment(String id, String reference) =>
       _run(() => _api.post('/orders/$id/payment-report', data: {'reference': reference}));
 
+  /// Si la tienda canceló: el cliente dice si de todas formas recibió el pedido.
+  Future<String?> cancelFeedback(String id, bool received) =>
+      _run(() => _api.post('/orders/$id/cancel-feedback', data: {'received': received}));
+
   /// La tienda confirma si le llegó la transferencia.
   Future<String?> confirmPayment(String id, bool received) =>
       _run(() => _api.post('/seller/orders/$id/payment-confirm', data: {'received': received}));

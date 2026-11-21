@@ -579,13 +579,15 @@ class _NotificationsPageState extends State<NotificationsPage>
                                 size: 8,
                               ),
                               const SizedBox(width: 8),
-                              Text(
-                                'Notificaciones sin leer: $unreadCount (protegidas)',
-                                style: TextStyle(
-                                  color: isDarkMode
-                                      ? AppColors.textMuted
-                                      : AppColors.textSecondary,
-                                  fontSize: 13,
+                              Expanded(
+                                child: Text(
+                                  'Notificaciones sin leer: $unreadCount (protegidas)',
+                                  style: TextStyle(
+                                    color: isDarkMode
+                                        ? AppColors.textMuted
+                                        : AppColors.textSecondary,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ],

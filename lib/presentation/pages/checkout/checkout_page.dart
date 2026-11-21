@@ -14,7 +14,8 @@ import '../../models/cart_item.dart';
 import '../../viewmodels/cart/cart_cubit.dart';
 import '../../viewmodels/market/market_cubits.dart';
 import '../../widgets/ui/app_widgets.dart';
-import '../../widgets/ui/campus_map.dart';
+import '../../widgets/ui/place_picker_sheet.dart';
+import '../../widgets/ui/uni_map.dart';
 import '../../widgets/ui/payment_widgets.dart';
 import '../../widgets/ui/product_image.dart';
 
@@ -66,7 +67,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         : s.acceptsCash
         ? const PaymentChoice.cash()
         : (s.acceptsCard && card != null ? PaymentChoice.card(card) : null);
-    final places = Catalog.places;
+    final places = Catalog.deliveryPlaces;
     if (places.isNotEmpty && !places.any((p) => p.id == _deliveryPlaceId)) {
       _deliveryPlaceId = places.first.id;
     }
@@ -261,6 +262,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           child: const Text('Cambiar'),
                         ),
                       ),
+                      UniMap(
+                        height: 180,
+                        deliveryOnly: true,
+                        selectedPlaceId: _deliveryPlaceId,
+                        onPlaceTap: (p) => setState(() => _deliveryPlaceId = p.id),
+                      ),
+                      const SizedBox(height: 10),
                       TextField(
                         controller: _notes,
                         decoration: const InputDecoration(
@@ -318,25 +326,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         child: _showMap
                             ? Padding(
                                 padding: const EdgeInsets.only(top: 12),
-                                child: CampusMap(
+                                child: UniMap(
                                   height: 200,
-                                  routeFrom: _deliveryPlaceId,
-                                  routeTo: settings.pickupPlaceId,
                                   selectedPlaceId: settings.pickupPlaceId,
-                                  pins: [
-                                    MapPin(
-                                      placeId: _deliveryPlaceId,
-                                      icon: Icons.person_rounded,
-                                      color: AppColors.info,
-                                      label: 'Tú',
-                                    ),
-                                    MapPin(
-                                      placeId: settings.pickupPlaceId,
-                                      icon: Icons.storefront_rounded,
-                                      color: AppColors.primary,
-                                      label: widget.storeName,
-                                    ),
-                                  ],
                                 ),
                               )
                             : const SizedBox(width: double.infinity),

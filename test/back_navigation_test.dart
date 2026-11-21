@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:unimarket/core/injection_container.dart' as di;
 import 'package:unimarket/core/theme/app_theme.dart';
 import 'package:unimarket/main.dart';
+import 'package:unimarket/presentation/widgets/ui/uni_map.dart';
 
 import 'helpers/fake_session.dart';
 
@@ -13,6 +14,7 @@ Future<GoRouter> _start(WidgetTester tester, String role) async {
   fakeSession(role);
   await di.sl.reset();
   AppTheme.useGoogleFonts = false;
+  UniMap.usePlaceholder = true;
   final prefs = await bootstrap();
   await tester.pumpWidget(UniMarketApp(appPreferences: prefs));
   await tester.pump(const Duration(seconds: 1));

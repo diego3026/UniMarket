@@ -39,7 +39,6 @@ class AppRoutes {
   static const profile = '/profile';
   static const editProfile = '/profile/edit';
   static const addresses = '/addresses';
-  static const addAddress = '/addresses/new';
   static const mapAddress = '/addresses/map';
   static const paymentMethods = '/payment-methods';
   static const settings = '/settings';
@@ -62,7 +61,6 @@ class AppRoutes {
   static const sellerSchedule = '/seller/schedule';
   static const sellerBank = '/seller/bank';
   static const sellerDocuments = '/seller/documents';
-  static const sellerManagement = '/seller/management';
 
   // ── Administrador ─────────────────────────────────────────
   static const adminHome = '/admin';
@@ -70,6 +68,12 @@ class AppRoutes {
   static const adminBusinesses = '/admin/businesses';
   static const adminReports = '/admin/reports';
   static const adminProducts = '/admin/products';
+  static const adminMapPins = '/admin/map-pins';
+  static const exploreMap = '/map';
+  static const terms = '/terms';
+  static const sellerCommissions = '/seller/commissions';
+  static const adminCommissions = '/admin/commissions';
+  static const adminCancellations = '/admin/cancellations';
 
   static const publicRoutes = {
     onboarding,

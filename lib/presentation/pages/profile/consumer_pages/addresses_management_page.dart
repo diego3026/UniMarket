@@ -1,6 +1,7 @@
 import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:unimarket/presentation/pages/addresses/address_form_page.dart';
 import 'package:unimarket/core/injection_container.dart';
 import 'package:unimarket/presentation/viewmodels/addresses/addresses_cubit.dart';
 import 'package:unimarket/presentation/viewmodels/addresses/addresses_state.dart';
@@ -13,7 +14,9 @@ class AddressesManagementPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => sl<AddressesCubit>()..loadAddresses(),
-      child: Scaffold(
+      // Builder: el botón "+" necesita un context que esté debajo del BlocProvider.
+      child: Builder(
+        builder: (context) => Scaffold(
         appBar: AppBar(
           title: const Text('Mis Direcciones'),
           backgroundColor: Colors.white,
@@ -38,8 +41,6 @@ class AddressesManagementPage extends StatelessWidget {
                     ? 'Dirección actualizada'
                     : 'Dirección eliminada',
               );
-              // Reload addresses after any action
-              context.read<AddressesCubit>().loadAddresses();
             }
           },
           builder: (context, state) {
@@ -90,9 +91,10 @@ class AddressesManagementPage extends StatelessWidget {
         ),
         floatingActionButton: FloatingActionButton(
           backgroundColor: AppColors.primary,
-          onPressed: () => _showAddAddressDialog(context),
+          onPressed: () => _openForm(context),
           child: const Icon(Icons.add),
         ),
+      ),
       ),
     );
   }
@@ -150,16 +152,27 @@ class AddressesManagementPage extends StatelessWidget {
             style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
           Text(
-            '${address.city}, ${address.country}',
+            [if ((address.postalCode ?? '').isNotEmpty) address.postalCode!, address.city].join(' · '),
             style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
+          if (address.latitude != null)
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.location_on_rounded, size: 14, color: AppColors.success),
+                  SizedBox(width: 4),
+                  Text('Ubicación en el mapa', style: TextStyle(fontSize: 12, color: AppColors.success)),
+                ],
+              ),
+            ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               OutlinedButton.icon(
-                onPressed: () => _showEditAddressDialog(context, address),
+                onPressed: () => _openForm(context, address),
                 icon: const Icon(Icons.edit_outlined, size: 18),
                 label: const Text('Editar'),
               ),
@@ -187,167 +200,11 @@ class AddressesManagementPage extends StatelessWidget {
     );
   }
 
-  void _showAddAddressDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final addressController = TextEditingController();
-    final cityController = TextEditingController();
-    final countryController = TextEditingController();
-    final postalCodeController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Agregar Dirección'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Etiqueta (ej: Casa, Trabajo)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: addressController,
-                decoration: const InputDecoration(
-                  labelText: 'Dirección',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: cityController,
-                decoration: const InputDecoration(
-                  labelText: 'Ciudad',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: countryController,
-                decoration: const InputDecoration(
-                  labelText: 'País',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: postalCodeController,
-                decoration: const InputDecoration(
-                  labelText: 'Código Postal',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            onPressed: () {
-              context.read<AddressesCubit>().addAddress(
-                label: nameController.text,
-                address: addressController.text,
-                city: cityController.text,
-                country: countryController.text,
-                postalCode: postalCodeController.text,
-              );
-              Navigator.pop(dialogContext);
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showEditAddressDialog(BuildContext context, AddressModel address) {
-    final nameController = TextEditingController(text: address.label);
-    final addressController = TextEditingController(text: address.address);
-    final cityController = TextEditingController(text: address.city);
-    final countryController = TextEditingController(text: address.country);
-    final postalCodeController = TextEditingController(
-      text: address.postalCode,
-    );
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Editar Dirección'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Etiqueta',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: addressController,
-                decoration: const InputDecoration(
-                  labelText: 'Dirección',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: cityController,
-                decoration: const InputDecoration(
-                  labelText: 'Ciudad',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: countryController,
-                decoration: const InputDecoration(
-                  labelText: 'País',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: postalCodeController,
-                decoration: const InputDecoration(
-                  labelText: 'Código Postal',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            onPressed: () {
-              context.read<AddressesCubit>().updateAddress(
-                id: address.id,
-                label: nameController.text,
-                address: addressController.text,
-                city: cityController.text,
-                country: countryController.text,
-                postalCode: postalCodeController.text,
-              );
-              Navigator.pop(dialogContext);
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
+  void _openForm(BuildContext context, [AddressModel? address]) {
+    final cubit = context.read<AddressesCubit>();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(value: cubit, child: AddressFormPage(initial: address)),
       ),
     );
   }

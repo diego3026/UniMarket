@@ -37,16 +37,15 @@ class AddressesCubit extends Cubit<AddressesState> {
         if (lat != null && lng != null) 'longitude': lng,
       };
 
-  Future<void> addAddress({
+  /// Crea una dirección. Devuelve el mensaje de error o null.
+  Future<String?> addAddress({
     required String label,
     required String address,
     required String city,
-    String? country,
     String? postalCode,
     double? latitude,
     double? longitude,
   }) async {
-    emit(const AddressesLoading());
     try {
       final r = await _api.post(
         '/me/addresses',
@@ -54,31 +53,33 @@ class AddressesCubit extends Cubit<AddressesState> {
       );
       emit(AddressAdded(AddressModel.fromJson(r as Map<String, dynamic>)));
       await loadAddresses();
+      return null;
     } on ApiException catch (e) {
-      emit(AddressError(e.message));
+      return e.message;
     }
   }
 
-  Future<void> updateAddress({
+  /// Actualiza una dirección (el servidor pide el cuerpo completo).
+  Future<String?> updateAddress({
     required String id,
     required String label,
     required String address,
     required String city,
-    String? country,
     String? postalCode,
+    double? latitude,
+    double? longitude,
   }) async {
     final current = _addresses.where((a) => a.id == id).firstOrNull;
-    emit(const AddressesLoading());
     try {
       final r = await _api.put(
         '/me/addresses/$id',
-        data: _body(label, address, city, postalCode, current?.isDefault ?? false,
-            lat: current?.latitude, lng: current?.longitude),
+        data: _body(label, address, city, postalCode, current?.isDefault ?? false, lat: latitude, lng: longitude),
       );
       emit(AddressUpdated(AddressModel.fromJson(r as Map<String, dynamic>)));
       await loadAddresses();
+      return null;
     } on ApiException catch (e) {
-      emit(AddressError(e.message));
+      return e.message;
     }
   }
 
