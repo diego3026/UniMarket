@@ -262,6 +262,13 @@ class _HomeHeader extends StatelessWidget {
                   ).withBadge(unread);
                 },
               ),
+              const SizedBox(width: 8),
+              CircleIconButton(
+                icon: Icons.map_outlined,
+                tooltip: 'Mapa',
+                background: AppColors.surfaceMuted,
+                onPressed: () => context.push(AppRoutes.exploreMap),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: InkWell(

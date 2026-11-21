@@ -2,24 +2,54 @@
 //
 // Modelo compartido entre cliente y emprendedor: lugares del campus,
 // configuración de cada tienda, promociones/cupones, pedidos y medios de pago.
-import 'dart:ui';
-
 import 'package:equatable/equatable.dart';
 
 import '../../core/utils/formatters.dart';
 
-/// Punto del campus de la Universidad del Magdalena.
-/// [position] va de 0 a 1 en ambos ejes del mapa ilustrado.
+/// Tipos de pin del mapa (los crea el administrador).
+enum PlaceKind {
+  building('Edificio'),
+  delivery('Punto de entrega'),
+  entrance('Entrada'),
+  food('Comida'),
+  parking('Parqueadero'),
+  service('Servicio'),
+  sports('Deportes'),
+  other('Otro');
+
+  final String label;
+  const PlaceKind(this.label);
+}
+
+/// Pin del mapa de la Universidad del Magdalena. Si [isDeliveryPoint] es
+/// true sirve para entregar y recoger pedidos; si no, es solo una guía.
 class CampusPlace extends Equatable {
   final String id;
   final String name;
   final String hint;
-  final Offset position;
+  final String description;
+  final PlaceKind kind;
+  final bool isDeliveryPoint;
+  final double? latitude;
+  final double? longitude;
+  final bool isActive;
 
-  const CampusPlace(this.id, this.name, this.hint, this.position);
+  const CampusPlace(
+    this.id,
+    this.name,
+    this.hint, {
+    this.description = '',
+    this.kind = PlaceKind.building,
+    this.isDeliveryPoint = true,
+    this.latitude,
+    this.longitude,
+    this.isActive = true,
+  });
+
+  bool get hasLocation => latitude != null && longitude != null;
 
   @override
-  List<Object?> get props => [id];
+  List<Object?> get props => [id, name, hint, description, kind, isDeliveryPoint, latitude, longitude, isActive];
 }
 
 /// Cómo recibe el cliente su pedido.
@@ -50,6 +80,13 @@ class StoreSettings extends Equatable {
   final String brebKey;
   final String phone;
 
+  /// Local físico (opcional).
+  final String address;
+  final double? latitude;
+  final double? longitude;
+
+  bool get hasLocation => latitude != null && longitude != null;
+
   const StoreSettings({
     required this.storeId,
     this.isOpen = true,
@@ -67,6 +104,9 @@ class StoreSettings extends Equatable {
     this.nequiPhone = '',
     this.brebKey = '',
     this.phone = '',
+    this.address = '',
+    this.latitude,
+    this.longitude,
   });
 
   StoreSettings copyWith({
@@ -85,6 +125,10 @@ class StoreSettings extends Equatable {
     String? nequiPhone,
     String? brebKey,
     String? phone,
+    String? address,
+    double? latitude,
+    double? longitude,
+    bool clearLocation = false,
   }) => StoreSettings(
     storeId: storeId,
     isOpen: isOpen ?? this.isOpen,
@@ -102,6 +146,9 @@ class StoreSettings extends Equatable {
     nequiPhone: nequiPhone ?? this.nequiPhone,
     brebKey: brebKey ?? this.brebKey,
     phone: phone ?? this.phone,
+    address: address ?? this.address,
+    latitude: clearLocation ? null : (latitude ?? this.latitude),
+    longitude: clearLocation ? null : (longitude ?? this.longitude),
   );
 
   @override
@@ -122,6 +169,9 @@ class StoreSettings extends Equatable {
     nequiPhone,
     brebKey,
     phone,
+    address,
+    latitude,
+    longitude,
   ];
 }
 

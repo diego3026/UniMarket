@@ -1,5 +1,6 @@
 import 'package:unimarket/presentation/viewmodels/catalog/catalog_cubit.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' show LatLng;
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -10,7 +11,9 @@ import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/market_entities.dart';
 import '../../viewmodels/market/market_cubits.dart';
 import '../../widgets/ui/app_widgets.dart';
-import '../../widgets/ui/campus_map.dart';
+import '../../widgets/ui/place_picker_sheet.dart';
+import '../../widgets/ui/uni_map.dart';
+import '../addresses/location_picker_page.dart';
 
 /// Configuración de la tienda: dónde recogen los clientes, si hace
 /// domicilios, costos, tiempo de preparación y medios de pago.
@@ -37,12 +40,29 @@ class _StoreSettingsPageState extends State<StoreSettingsPage> {
   late final _nequi = TextEditingController(text: _s.nequiPhone);
   late final _breb = TextEditingController(text: _s.brebKey);
   bool _saving = false;
+  late bool _hasLocal = _s.hasLocation;
+  late final _address = TextEditingController(text: _s.address);
+
+  Future<void> _pickLocal() async {
+    final p = await Navigator.of(context).push<LatLng>(
+      MaterialPageRoute(
+        builder: (_) => LocationPickerPage(
+          initial: _s.hasLocation ? LatLng(_s.latitude!, _s.longitude!) : null,
+        ),
+      ),
+    );
+    if (p == null || !mounted) return;
+    setState(() {
+      _hasLocal = true;
+      _s = _s.copyWith(latitude: p.latitude, longitude: p.longitude);
+    });
+  }
 
   static final _brebRe = RegExp(r'^(@[A-Za-z0-9._-]{3,40}|3\d{9}|[^@\s]+@[^@\s]+\.[a-z]{2,}|\d{5,15})$');
 
   @override
   void dispose() {
-    for (final c in [_notes, _fee, _min, _phone, _nequi, _breb]) {
+    for (final c in [_notes, _fee, _min, _phone, _nequi, _breb, _address]) {
       c.dispose();
     }
     super.dispose();
@@ -75,6 +95,8 @@ class _StoreSettingsPageState extends State<StoreSettingsPage> {
         nequiPhone: nequi,
         brebKey: breb,
         acceptsCard: false,
+        address: _hasLocal ? _address.text.trim() : '',
+        clearLocation: !_hasLocal,
       ),
     );
     if (!mounted) return;
@@ -119,19 +141,11 @@ class _StoreSettingsPageState extends State<StoreSettingsPage> {
             'Punto de recogida',
             'Aquí te encuentran los clientes que eligen "Ir a recoger".',
             [
-              CampusMap(
+              UniMap(
                 height: 190,
+                deliveryOnly: true,
                 selectedPlaceId: _s.pickupPlaceId,
-                pins: [
-                  MapPin(
-                    placeId: _s.pickupPlaceId,
-                    icon: Icons.storefront_rounded,
-                    color: AppColors.seller,
-                    label: Catalog.myStoreOrEmpty.name,
-                  ),
-                ],
-                onPlaceTap: (p) =>
-                    setState(() => _s = _s.copyWith(pickupPlaceId: p.id)),
+                onPlaceTap: (p) => setState(() => _s = _s.copyWith(pickupPlaceId: p.id)),
               ),
               const SizedBox(height: 10),
               ListTile(
@@ -165,6 +179,54 @@ class _StoreSettingsPageState extends State<StoreSettingsPage> {
                   hintText: 'Ej. Carrito amarillo frente a la cafetería',
                 ),
               ),
+            ],
+          ),
+          section(
+            'Local físico',
+            'Si tienes un local fuera del campus, márcalo para que los clientes lo encuentren en el mapa.',
+            [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Tengo un local físico'),
+                value: _hasLocal,
+                onChanged: (v) async {
+                  if (v && !_s.hasLocation) {
+                    await _pickLocal();
+                  } else {
+                    setState(() {
+                      _hasLocal = v;
+                      if (!v) _s = _s.copyWith(clearLocation: true);
+                    });
+                  }
+                },
+              ),
+              if (_hasLocal && _s.hasLocation) ...[
+                UniMap(
+                  height: 170,
+                  showGuidePins: false,
+                  markers: [
+                    UniMarker(
+                      id: 'local',
+                      latitude: _s.latitude!,
+                      longitude: _s.longitude!,
+                      title: Catalog.myStoreOrEmpty.name,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _address,
+                  decoration: const InputDecoration(
+                    labelText: 'Dirección del local',
+                    hintText: 'Ej. Calle 29 #5-10, local 3',
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _pickLocal,
+                  icon: const Icon(Icons.edit_location_alt_outlined),
+                  label: const Text('Cambiar ubicación'),
+                ),
+              ],
             ],
           ),
           section(

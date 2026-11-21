@@ -14,10 +14,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/entities/product_entity.dart';
 import '../../domain/entities/user_role.dart';
 import '../../presentation/pages/addresses/location_picker_page.dart';
+import '../../presentation/pages/map/explore_map_page.dart';
+import '../../presentation/pages/profile/admin_pages/map_pins_page.dart';
 import '../../presentation/pages/admin/admin_home_page.dart';
 import '../../presentation/pages/cart/cart_page.dart';
 import '../../presentation/pages/checkout/checkout_page.dart';
-import '../../presentation/pages/dashboards/entrepreneur_dashboard.dart';
 import '../../presentation/pages/email_confirmation/email_confirmation_page.dart';
 import '../../presentation/pages/favorites/favorites_page.dart';
 import '../../presentation/pages/help/help_page.dart';
@@ -310,15 +311,6 @@ GoRouter buildRouter() {
       page(AppRoutes.sellerSchedule, (_) => seller(const SchedulePage())),
       page(AppRoutes.sellerBank, (_) => seller(const BankDataPage())),
       page(AppRoutes.sellerDocuments, (_) => seller(const DocumentsPage())),
-      page(
-        AppRoutes.sellerManagement,
-        (_) => seller(
-          Scaffold(
-            appBar: AppBar(title: const Text('Gestión del negocio')),
-            body: const EntrepreneurDashboard(),
-          ),
-        ),
-      ),
 
       // ── Administrador ───────────────────────────────────
       StatefulShellRoute.indexedStack(
@@ -359,6 +351,8 @@ GoRouter buildRouter() {
         ],
       ),
       page(AppRoutes.adminProducts, (_) => const ManageProductsPage()),
+      page(AppRoutes.adminMapPins, (_) => const MapPinsPage()),
+      page(AppRoutes.exploreMap, (_) => const ExploreMapPage()),
     ],
   );
 }

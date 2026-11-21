@@ -8,7 +8,8 @@ import '../../../constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../viewmodels/market/market_cubits.dart';
-import '../../widgets/ui/campus_map.dart';
+import '../../../core/utils/directions.dart';
+import '../../widgets/ui/uni_map.dart';
 import '../../../domain/entities/product_entity.dart';
 import '../../viewmodels/product/product_cubit.dart';
 import '../../widgets/ui/app_widgets.dart';
@@ -195,9 +196,9 @@ class _StoreInfo extends StatelessWidget {
     final coupons = context.watch<PromotionsCubit>().activeCoupons(storeId);
     final place = Catalog.place(s.pickupPlaceId);
     final pays = [
-      if (s.acceptsCash) 'Efectivo',
+      if (s.acceptsBreb) 'Bre-B',
       if (s.acceptsNequi) 'Nequi',
-      if (s.acceptsCard) 'Tarjeta',
+      if (s.acceptsCash) 'Efectivo',
     ];
 
     Widget line(IconData icon, String text) => Padding(
@@ -235,17 +236,19 @@ class _StoreInfo extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CampusMap(
-                height: 150,
-                radius: 14,
-                selectedPlaceId: s.pickupPlaceId,
-                pins: [
-                  MapPin(
-                    placeId: s.pickupPlaceId,
-                    icon: Icons.storefront_rounded,
-                    color: AppColors.primary,
-                    label: storeName,
-                  ),
+              UniMap(
+                height: 170,
+                selectedPlaceId: s.allowsPickup ? s.pickupPlaceId : null,
+                deliveryOnly: true,
+                markers: [
+                  if (s.hasLocation)
+                    UniMarker(
+                      id: 'local',
+                      latitude: s.latitude!,
+                      longitude: s.longitude!,
+                      title: storeName,
+                      snippet: s.address.isEmpty ? 'Local físico' : s.address,
+                    ),
                 ],
               ),
               const SizedBox(height: 10),
@@ -261,6 +264,17 @@ class _StoreInfo extends StatelessWidget {
                     : 'No hace domicilios, solo para recoger',
               ),
               line(Icons.wallet_rounded, 'Recibe: ${pays.join(', ')}'),
+              if (s.hasLocation) ...[
+                line(Icons.location_on_rounded, 'Local físico${s.address.isEmpty ? '' : ': ${s.address}'}'),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => openDirections(s.latitude!, s.longitude!),
+                    icon: const Icon(Icons.directions_rounded),
+                    label: const Text('Cómo llegar'),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

@@ -14,7 +14,9 @@ class AddressesManagementPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => sl<AddressesCubit>()..loadAddresses(),
-      child: Scaffold(
+      // Builder: el botón "+" necesita un context que esté debajo del BlocProvider.
+      child: Builder(
+        builder: (context) => Scaffold(
         appBar: AppBar(
           title: const Text('Mis Direcciones'),
           backgroundColor: Colors.white,
@@ -39,8 +41,6 @@ class AddressesManagementPage extends StatelessWidget {
                     ? 'Dirección actualizada'
                     : 'Dirección eliminada',
               );
-              // Reload addresses after any action
-              context.read<AddressesCubit>().loadAddresses();
             }
           },
           builder: (context, state) {
@@ -94,6 +94,7 @@ class AddressesManagementPage extends StatelessWidget {
           onPressed: () => _openForm(context),
           child: const Icon(Icons.add),
         ),
+      ),
       ),
     );
   }

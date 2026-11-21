@@ -142,6 +142,9 @@ class Catalog {
     }
     return _s.places.isNotEmpty
         ? _s.places.first
-        : CampusPlace(id, id.isEmpty ? 'Campus' : id, '', const Offset(0.5, 0.5));
+        : CampusPlace(id, id.isEmpty ? 'Campus' : id, '');
   }
+
+  /// Pines que sirven para entregar o recoger pedidos.
+  static List<CampusPlace> get deliveryPlaces => _s.places.where((p) => p.isDeliveryPoint).toList();
 }

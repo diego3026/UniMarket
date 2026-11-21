@@ -140,6 +140,11 @@ class ProfilePage extends StatelessWidget {
 
     final common = group('General', [
       MenuTile(
+        icon: Icons.map_outlined,
+        title: 'Mapa del campus y tiendas',
+        onTap: () => context.push(AppRoutes.exploreMap),
+      ),
+      MenuTile(
         icon: Icons.settings_outlined,
         title: 'Ajustes',
         onTap: () => context.push(AppRoutes.settings),
@@ -251,12 +256,12 @@ class ProfilePage extends StatelessWidget {
             ),
             MenuTile(
               icon: Icons.insights_rounded,
-              title: 'Clientes, inventario y calificaciones',
-              onTap: () => context.push(AppRoutes.sellerManagement),
+              title: 'Estadísticas',
+              onTap: () => context.go(AppRoutes.sellerStats),
             ),
             MenuTile(
               icon: Icons.account_balance_outlined,
-              title: 'Datos bancarios',
+              title: 'Cuenta de pagos',
               onTap: () => context.push(AppRoutes.sellerBank),
             ),
             MenuTile(

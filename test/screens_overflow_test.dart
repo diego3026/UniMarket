@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:unimarket/core/injection_container.dart' as di;
 import 'package:unimarket/core/theme/app_theme.dart';
 import 'package:unimarket/main.dart';
+import 'package:unimarket/presentation/widgets/ui/uni_map.dart';
 
 import 'helpers/fake_session.dart';
 
@@ -15,14 +16,14 @@ const _consumer = [
   '/order/1045', '/order/1044', '/order/1038', '/order/1019', '/order/1038/review',
   '/profile', '/profile/edit', '/addresses', '/payment-methods',
   '/settings', '/settings/app', '/settings/orders', '/settings/notifications', '/settings/privacy',
-  '/become-seller', '/help',
+  '/become-seller', '/help', '/map',
 ];
 const _seller = [
   '/seller', '/seller/menu', '/seller/promos', '/seller/stats', '/seller/profile',
   '/seller/products/new', '/seller/schedule', '/seller/settings', '/seller/promo-form',
-  '/seller/bank', '/seller/documents', '/seller/management',
+  '/seller/bank', '/seller/documents',
 ];
-const _admin = ['/admin', '/admin/users', '/admin/businesses', '/admin/reports', '/admin/products'];
+const _admin = ['/admin', '/admin/users', '/admin/businesses', '/admin/reports', '/admin/products', '/admin/map-pins'];
 
 Future<void> _visitAll(WidgetTester tester, String role, List<String> routes) async {
   tester.view.physicalSize = const Size(360 * 3, 760 * 3);
@@ -34,6 +35,7 @@ Future<void> _visitAll(WidgetTester tester, String role, List<String> routes) as
   fakeSession(role);
   await di.sl.reset();
   AppTheme.useGoogleFonts = false;
+  UniMap.usePlaceholder = true;
   final prefs = await bootstrap();
 
   final overflows = <String>[];

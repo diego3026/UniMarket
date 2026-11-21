@@ -61,7 +61,6 @@ class AppRoutes {
   static const sellerSchedule = '/seller/schedule';
   static const sellerBank = '/seller/bank';
   static const sellerDocuments = '/seller/documents';
-  static const sellerManagement = '/seller/management';
 
   // ── Administrador ─────────────────────────────────────────
   static const adminHome = '/admin';
@@ -69,6 +68,8 @@ class AppRoutes {
   static const adminBusinesses = '/admin/businesses';
   static const adminReports = '/admin/reports';
   static const adminProducts = '/admin/products';
+  static const adminMapPins = '/admin/map-pins';
+  static const exploreMap = '/map';
 
   static const publicRoutes = {
     onboarding,

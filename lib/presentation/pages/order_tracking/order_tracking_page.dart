@@ -14,7 +14,9 @@ import '../../../core/utils/formatters.dart';
 import '../../../domain/entities/market_entities.dart';
 import '../../viewmodels/market/market_cubits.dart';
 import '../../widgets/ui/app_widgets.dart';
-import '../../widgets/ui/campus_map.dart';
+import '../../../core/utils/directions.dart';
+import '../../widgets/ui/uni_map.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' show LatLng, BitmapDescriptor;
 import '../../widgets/ui/product_image.dart';
 
 /// Seguimiento de un pedido (domicilio o para recoger).
@@ -31,14 +33,7 @@ class OrderTrackingPage extends StatefulWidget {
 }
 
 class _OrderTrackingPageState extends State<OrderTrackingPage>
-    with SingleTickerProviderStateMixin {
-  /// Ubicación aproximada del cliente (en la app real vendría del GPS).
-  static const _myPlace = 'b8';
-
-  late final AnimationController _courier = AnimationController(
-    vsync: this,
-    duration: const Duration(seconds: 9),
-  )..repeat();
+{
 
   Timer? _poll;
   bool _fetched = false;
@@ -62,7 +57,6 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
   @override
   void dispose() {
     _poll?.cancel();
-    _courier.dispose();
     super.dispose();
   }
 
@@ -262,7 +256,8 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
         final color = _statusColor(o.status);
         final isPickup = o.mode == FulfillmentMode.pickup;
         final storePlace = s.pickupPlaceId;
-        final showMe = _myPlace != storePlace;
+        final from = Catalog.place(storePlace);
+        final to = Catalog.place(o.placeId);
 
         return Scaffold(
           appBar: AppBar(
@@ -364,43 +359,39 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
 
               // Mapa
               if (o.status != OrderStatus.cancelled)
-                AnimatedBuilder(
-                  animation: _courier,
-                  builder: (context, _) => CampusMap(
-                    height: 230,
-                    // Recoger: ruta desde donde estás hasta la tienda.
-                    routeFrom: isPickup
-                        ? (showMe ? _myPlace : null)
-                        : storePlace,
-                    routeTo: isPickup
-                        ? (showMe ? storePlace : null)
-                        : o.placeId,
-                    courierProgress: o.status == OrderStatus.onTheWay
-                        ? 0.15 + 0.7 * _courier.value
-                        : null,
-                    selectedPlaceId: isPickup ? storePlace : o.placeId,
-                    pins: [
-                      MapPin(
-                        placeId: storePlace,
-                        icon: Icons.storefront_rounded,
-                        color: AppColors.seller,
-                        label: o.storeName,
+                UniMap(
+                  height: 230,
+                  showGuidePins: false,
+                  markers: [
+                    if (from.hasLocation)
+                      UniMarker(
+                        id: 'store',
+                        latitude: from.latitude!,
+                        longitude: from.longitude!,
+                        title: isPickup ? 'Recoge aquí · ${o.storeName}' : o.storeName,
+                        snippet: from.name,
                       ),
-                      if (!isPickup)
-                        MapPin(
-                          placeId: o.placeId,
-                          icon: Icons.home_rounded,
-                          color: AppColors.primary,
-                          label: 'Entrega',
-                        ),
-                      if (isPickup && showMe)
-                        MapPin(
-                          placeId: _myPlace,
-                          icon: Icons.person_rounded,
-                          color: AppColors.info,
-                          label: 'Tú',
-                        ),
-                    ],
+                    if (!isPickup && to.hasLocation)
+                      UniMarker(
+                        id: 'dest',
+                        latitude: to.latitude!,
+                        longitude: to.longitude!,
+                        title: 'Entrega · ${to.name}',
+                        snippet: o.notes.isEmpty ? null : o.notes,
+                        hue: BitmapDescriptor.hueViolet,
+                      ),
+                  ],
+                  route: !isPickup && from.hasLocation && to.hasLocation
+                      ? [LatLng(from.latitude!, from.longitude!), LatLng(to.latitude!, to.longitude!)]
+                      : const [],
+                ),
+              if (o.status != OrderStatus.cancelled && isPickup && from.hasLocation)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => openDirections(from.latitude!, from.longitude!),
+                    icon: const Icon(Icons.directions_walk_rounded),
+                    label: Text('Cómo llegar a ${from.name}'),
                   ),
                 ),
               if (o.status != OrderStatus.cancelled) const SizedBox(height: 14),
