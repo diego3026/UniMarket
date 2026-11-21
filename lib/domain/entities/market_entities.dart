@@ -459,6 +459,22 @@ class MarketOrder extends Equatable {
   final String cancelReason;
   final String sellerReply;
 
+  /// customer | seller (quién canceló).
+  final String cancelledBy;
+
+  /// La tienda canceló con el pago ya reportado o confirmado.
+  final bool paidCancelled;
+
+  /// Respuesta del cliente si la tienda canceló: received | not_received.
+  final String customerConfirmation;
+
+  /// Revisión del admin: open | confirmed | dismissed.
+  final String disputeStatus;
+
+  /// El cliente aún puede decir si recibió un pedido que la tienda canceló.
+  bool get canAnswerCancellation =>
+      status == OrderStatus.cancelled && cancelledBy == 'seller' && customerConfirmation.isEmpty;
+
   const MarketOrder({
     required this.id,
     required this.pickupCode,
@@ -489,6 +505,10 @@ class MarketOrder extends Equatable {
     this.productDiscount = 0,
     this.cancelReason = '',
     this.sellerReply = '',
+    this.cancelledBy = '',
+    this.paidCancelled = false,
+    this.customerConfirmation = '',
+    this.disputeStatus = '',
   });
 
   double get total => subtotal - couponDiscount + deliveryFee;
@@ -553,8 +573,21 @@ class MarketOrder extends Equatable {
     productDiscount: productDiscount,
     cancelReason: cancelReason,
     sellerReply: sellerReply,
+    cancelledBy: cancelledBy,
+    paidCancelled: paidCancelled,
+    customerConfirmation: customerConfirmation,
+    disputeStatus: disputeStatus,
   );
 
   @override
-  List<Object?> get props => [id, status, history.length, rating, paymentStatus, paymentReference];
+  List<Object?> get props => [
+    id,
+    status,
+    history.length,
+    rating,
+    paymentStatus,
+    paymentReference,
+    customerConfirmation,
+    disputeStatus,
+  ];
 }

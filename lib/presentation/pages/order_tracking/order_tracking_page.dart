@@ -88,6 +88,47 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
     if (mounted) _snack(err ?? 'Le avisamos a ${o.storeName}. Confirmará cuando vea el pago.');
   }
 
+  Future<void> _answerCancellation(MarketOrder o, bool received) async {
+    final err = await context.read<MarketOrdersCubit>().cancelFeedback(o.id, received);
+    if (!mounted) return;
+    _snack(err ?? (received ? 'Gracias, lo revisaremos.' : 'Gracias por contarnos.'));
+  }
+
+  Widget _cancelQuestion(TextTheme t, MarketOrder o) => Padding(
+    padding: const EdgeInsets.only(bottom: 14),
+    child: SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('¿Recibiste el pedido de todas formas?', style: t.titleSmall),
+          const SizedBox(height: 4),
+          Text(
+            'La tienda lo canceló. Tu respuesta nos ayuda a que las ventas se registren bien.',
+            style: t.bodySmall,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => _answerCancellation(o, false),
+                  child: const Text('No lo recibí'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () => _answerCancellation(o, true),
+                  child: const Text('Sí lo recibí'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+
   Widget _payCard(TextTheme t, MarketOrder o) {
     final p = o.payTo;
     final reported = o.paymentStatus == PaymentStatus.reported;
@@ -181,8 +222,10 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
           '¡Gracias por apoyar a ${o.storeName}!',
         ),
         OrderStatus.cancelled => (
-          'Pedido cancelado',
-          'No se realizó ningún cobro',
+          o.cancelledBy == 'seller' ? '${o.storeName} canceló el pedido' : 'Pedido cancelado',
+          o.paidCancelled
+              ? 'La tienda debe devolverte el dinero en máximo 2 días hábiles'
+              : (o.cancelReason.isEmpty ? 'No se realizó ningún cobro' : o.cancelReason),
         ),
       };
 
@@ -312,6 +355,19 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
                 ),
               ),
               const SizedBox(height: 14),
+
+              // La tienda canceló: ¿lo recibiste de todas formas?
+              if (o.canAnswerCancellation) _cancelQuestion(t, o),
+              if (o.customerConfirmation == 'received')
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: SurfaceCard(
+                    child: Text(
+                      'Gracias. Indicaste que sí recibiste el pedido; el equipo de UniMarket lo está revisando.',
+                      style: t.bodyMedium,
+                    ),
+                  ),
+                ),
 
               // Pago por transferencia
               if (o.paymentKind.isTransfer &&

@@ -154,6 +154,11 @@ class ProfilePage extends StatelessWidget {
         title: 'Ayuda',
         onTap: () => context.push(AppRoutes.help),
       ),
+      MenuTile(
+        icon: Icons.gavel_rounded,
+        title: 'Términos y condiciones',
+        onTap: () => context.push(AppRoutes.terms),
+      ),
     ]);
 
     switch (role) {
@@ -253,6 +258,11 @@ class ProfilePage extends StatelessWidget {
               icon: Icons.add_box_outlined,
               title: 'Crear producto',
               onTap: () => context.push(AppRoutes.sellerNewProduct),
+            ),
+            MenuTile(
+              icon: Icons.payments_outlined,
+              title: 'Comisiones',
+              onTap: () => context.push(AppRoutes.sellerCommissions),
             ),
             MenuTile(
               icon: Icons.insights_rounded,

@@ -16,14 +16,14 @@ const _consumer = [
   '/order/1045', '/order/1044', '/order/1038', '/order/1019', '/order/1038/review',
   '/profile', '/profile/edit', '/addresses', '/payment-methods',
   '/settings', '/settings/app', '/settings/orders', '/settings/notifications', '/settings/privacy',
-  '/become-seller', '/help', '/map',
+  '/become-seller', '/help', '/map', '/terms',
 ];
 const _seller = [
   '/seller', '/seller/menu', '/seller/promos', '/seller/stats', '/seller/profile',
   '/seller/products/new', '/seller/schedule', '/seller/settings', '/seller/promo-form',
-  '/seller/bank', '/seller/documents',
+  '/seller/bank', '/seller/documents', '/seller/commissions',
 ];
-const _admin = ['/admin', '/admin/users', '/admin/businesses', '/admin/reports', '/admin/products', '/admin/map-pins'];
+const _admin = ['/admin', '/admin/users', '/admin/businesses', '/admin/reports', '/admin/products', '/admin/map-pins', '/admin/commissions', '/admin/cancellations'];
 
 Future<void> _visitAll(WidgetTester tester, String role, List<String> routes) async {
   tester.view.physicalSize = const Size(360 * 3, 760 * 3);

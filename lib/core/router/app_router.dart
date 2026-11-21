@@ -15,6 +15,10 @@ import '../../domain/entities/product_entity.dart';
 import '../../domain/entities/user_role.dart';
 import '../../presentation/pages/addresses/location_picker_page.dart';
 import '../../presentation/pages/map/explore_map_page.dart';
+import '../../presentation/pages/legal/terms_page.dart';
+import '../../presentation/pages/commissions/admin_cancellations_page.dart';
+import '../../presentation/pages/commissions/admin_commissions_page.dart';
+import '../../presentation/pages/commissions/seller_commissions_page.dart';
 import '../../presentation/pages/profile/admin_pages/map_pins_page.dart';
 import '../../presentation/pages/admin/admin_home_page.dart';
 import '../../presentation/pages/cart/cart_page.dart';
@@ -124,6 +128,8 @@ GoRouter buildRouter() {
       final seenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
       final isPublic = AppRoutes.publicRoutes.contains(loc);
 
+      // Los términos se pueden leer con o sin sesión.
+      if (loc == AppRoutes.terms) return null;
       if (!seenOnboarding && loc != AppRoutes.onboarding) {
         return AppRoutes.onboarding;
       }
@@ -353,6 +359,10 @@ GoRouter buildRouter() {
       page(AppRoutes.adminProducts, (_) => const ManageProductsPage()),
       page(AppRoutes.adminMapPins, (_) => const MapPinsPage()),
       page(AppRoutes.exploreMap, (_) => const ExploreMapPage()),
+      page(AppRoutes.terms, (_) => const TermsPage()),
+      page(AppRoutes.adminCommissions, (_) => const AdminCommissionsPage()),
+      page(AppRoutes.adminCancellations, (_) => const AdminCancellationsPage()),
+      page(AppRoutes.sellerCommissions, (_) => seller(const SellerCommissionsPage())),
     ],
   );
 }

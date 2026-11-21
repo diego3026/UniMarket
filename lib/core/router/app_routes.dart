@@ -70,6 +70,10 @@ class AppRoutes {
   static const adminProducts = '/admin/products';
   static const adminMapPins = '/admin/map-pins';
   static const exploreMap = '/map';
+  static const terms = '/terms';
+  static const sellerCommissions = '/seller/commissions';
+  static const adminCommissions = '/admin/commissions';
+  static const adminCancellations = '/admin/cancellations';
 
   static const publicRoutes = {
     onboarding,

@@ -165,6 +165,18 @@ class _AdminHomePageState extends State<AdminHomePage> {
                             onTap: () => context.push(AppRoutes.adminMapPins),
                           ),
                           MenuTile(
+                            icon: Icons.payments_outlined,
+                            title: 'Comisiones',
+                            subtitle: 'Lo que debe pagar cada tienda por mes',
+                            onTap: () => context.push(AppRoutes.adminCommissions),
+                          ),
+                          MenuTile(
+                            icon: Icons.report_gmailerrorred_rounded,
+                            title: 'Cancelaciones y revisiones',
+                            subtitle: 'Alertas por tienda y disputas',
+                            onTap: () => context.push(AppRoutes.adminCancellations),
+                          ),
+                          MenuTile(
                             icon: Icons.storefront_rounded,
                             title: 'Emprendimientos',
                             subtitle: 'Aprobar, suspender y revisar',

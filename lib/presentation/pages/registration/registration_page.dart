@@ -173,7 +173,9 @@ class _RegistrationPageState extends State<RegistrationPage> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: RichText(
+                        child: GestureDetector(
+                          onTap: () => context.push(AppRoutes.terms),
+                          child: RichText(
                           text: const TextSpan(
                             style: TextStyle(
                               fontSize: 14,
@@ -201,6 +203,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                             ],
                           ),
                         ),
+                        )
                       ),
                     ],
                   ),
