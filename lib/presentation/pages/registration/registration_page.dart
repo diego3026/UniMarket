@@ -1,8 +1,10 @@
 import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../viewmodels/registration/registration_cubit.dart';
 import '../../viewmodels/registration/registration_state.dart';
+import 'package:unimarket/core/router/app_routes.dart';
 import 'package:unimarket/core/utils/notification_helper.dart';
 
 class RegistrationPage extends StatefulWidget {
@@ -41,9 +43,10 @@ class _RegistrationPageState extends State<RegistrationPage> {
               if (state is RegistrationSuccess) {
                 NotificationHelper.showSuccess(
                   context: context,
-                  message: 'Registro exitoso',
+                  message: '¡Cuenta creada! Revisa tu correo',
                 );
-                Navigator.pop(context);
+                // Ya hay sesión: falta confirmar el correo con el código.
+                context.go(AppRoutes.confirmEmail);
               }
             },
             builder: (context, state) {

@@ -1,93 +1,56 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../core/network/api_client.dart';
 import 'bank_data_state.dart';
 
+/// Cuenta de pagos del emprendedor + resumen de ventas.
 class BankDataCubit extends Cubit<BankDataState> {
-  BankDataCubit() : super(const BankDataInitial());
+  final ApiClient _api;
+  BankDataCubit(this._api) : super(const BankDataInitial());
 
-  // Sample data - replace with backend API calls
-  late BankDataModel _bankData = BankDataModel(
-    id: 1,
-    bankName: 'Banco del País',
-    accountNumber: '****2345',
-    accountHolderName: 'Juan Pérez',
-    accountType: 'Cuenta Corriente',
-    bankCode: 'BP001',
-    isVerified: true,
-    availableBalance: 2450000,
-    totalEarnings: 12450000,
-    createdAt: DateTime.now(),
-  );
-
-  /// Load bank data
-  void loadBankData() {
+  Future<void> loadBankData() async {
     emit(const BankDataLoading());
+    BankDataModel? account;
+    var sales = 0, delivered = 0;
     try {
-      // TODO: Replace with actual API call
-      // final bankData = await entrepreneurRepository.getBankData();
-      emit(BankDataLoaded(_bankData));
-    } catch (e) {
-      emit(BankDataError('Error al cargar datos bancarios: ${e.toString()}'));
+      account = BankDataModel.fromJson(await _api.get('/seller/payout-account') as Map<String, dynamic>);
+    } on ApiException catch (e) {
+      if (e.status != 404) {
+        emit(BankDataError(e.message));
+        return;
+      }
     }
+    try {
+      final e = await _api.get('/seller/earnings') as Map<String, dynamic>;
+      sales = (e['totalSales'] as num?)?.toInt() ?? 0;
+      delivered = (e['deliveredOrders'] as num?)?.toInt() ?? 0;
+    } on ApiException {
+      // el resumen es opcional en esta pantalla
+    }
+    emit(BankDataLoaded(account, totalSales: sales, deliveredOrders: delivered));
   }
 
-  /// Update bank data
-  void updateBankData({
+  Future<void> updateBankData({
     required String bankName,
-    required String accountNumber,
-    required String accountHolderName,
     required String accountType,
-  }) {
-    emit(const BankDataLoading());
+    required String accountNumber,
+    required String holderName,
+    required String holderDocument,
+  }) async {
+    emit(const BankDataSaving());
     try {
-      // TODO: Replace with actual API call
-      // await entrepreneurRepository.updateBankData(...)
-      _bankData = _bankData.copyWith(
-        bankName: bankName,
-        accountNumber: accountNumber,
-        accountHolderName: accountHolderName,
-        accountType: accountType,
-        updatedAt: DateTime.now(),
-      );
-      emit(BankDataUpdated(_bankData));
-      loadBankData();
-    } catch (e) {
-      emit(
-        BankDataError('Error al actualizar datos bancarios: ${e.toString()}'),
-      );
+      final r = await _api.put('/seller/payout-account', data: {
+        'bankName': bankName.trim(),
+        'accountType': accountType,
+        'accountNumber': accountNumber.replaceAll(RegExp(r'\D'), ''),
+        'holderName': holderName.trim(),
+        'holderDocument': holderDocument.replaceAll(RegExp(r'\D'), ''),
+      });
+      emit(BankDataUpdated(BankDataModel.fromJson(r as Map<String, dynamic>)));
+      await loadBankData();
+    } on ApiException catch (e) {
+      emit(BankDataError(e.message));
+      await loadBankData();
     }
-  }
-
-  /// Process withdrawal
-  void requestWithdrawal(double amount) {
-    emit(const WithdrawalProcessing());
-    try {
-      // TODO: Replace with actual API call
-      // Validate amount
-      if (amount <= 0) {
-        throw Exception('El monto debe ser mayor a 0');
-      }
-      if (amount > _bankData.availableBalance) {
-        throw Exception('Saldo insuficiente');
-      }
-
-      // Process withdrawal
-      final transactionId = 'TXN${DateTime.now().millisecondsSinceEpoch}';
-
-      // Update balance
-      _bankData = _bankData.copyWith(
-        availableBalance: _bankData.availableBalance - amount,
-      );
-
-      emit(WithdrawalSuccess(amount: amount, transactionId: transactionId));
-
-      loadBankData();
-    } catch (e) {
-      emit(BankDataError('Error al procesar retiro: ${e.toString()}'));
-    }
-  }
-
-  /// Get transaction history (placeholder)
-  void loadTransactionHistory() {
-    // TODO: Implement transaction history loading
   }
 }

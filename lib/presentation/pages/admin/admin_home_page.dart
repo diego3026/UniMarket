@@ -1,10 +1,11 @@
+import 'package:unimarket/presentation/viewmodels/catalog/catalog_cubit.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../constants/app_colors.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../data/datasources/mock/catalog_mock_data.dart';
 import '../../widgets/ui/app_widgets.dart';
 import '../dashboards/admin_dashboard.dart';
 
@@ -14,6 +15,7 @@ class AdminHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<CatalogCubit>(); // se reconstruye cuando llegan los datos de la API
     final t = Theme.of(context).textTheme;
     Widget kpi(String label, String value, IconData icon, Color color) =>
         Expanded(
@@ -64,7 +66,7 @@ class AdminHomePage extends StatelessWidget {
                 children: [
                   kpi(
                     'Emprendimientos',
-                    '${CatalogMockData.stores.length}',
+                    '${Catalog.stores.length}',
                     Icons.storefront_rounded,
                     AppColors.seller,
                   ),

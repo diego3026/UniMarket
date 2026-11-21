@@ -1,10 +1,10 @@
+import 'package:unimarket/presentation/viewmodels/catalog/catalog_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../data/datasources/mock/catalog_mock_data.dart';
 import '../../../domain/entities/product_entity.dart';
 import '../../viewmodels/product/product_cubit.dart';
 import '../../widgets/ui/app_widgets.dart';
@@ -66,8 +66,9 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<CatalogCubit>(); // se reconstruye cuando llegan los datos de la API
     final t = Theme.of(context).textTheme;
-    final stores = CatalogMockData.stores
+    final stores = Catalog.stores
         .where(
           (s) =>
               _query.isNotEmpty &&
@@ -113,7 +114,7 @@ class _SearchPageState extends State<SearchPage> {
             children: [
               const SizedBox(height: 8),
               ChoiceChipsRow(
-                options: const ['Todo', ...CatalogMockData.categories],
+                options: ['Todo', ...Catalog.categories],
                 selected: _category,
                 onSelected: (c) => setState(() => _category = c),
               ),

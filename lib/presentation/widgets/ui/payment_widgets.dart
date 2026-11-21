@@ -317,17 +317,17 @@ class _AddCardSheetState extends State<_AddCardSheet> {
               ),
               const SizedBox(height: 16),
               FilledButton(
-                onPressed: () {
+                onPressed: () async {
                   if (!_form.currentState!.validate()) return;
-                  context.read<WalletCubit>().addCard(
+                  final messenger = ScaffoldMessenger.of(context);
+                  final navigator = Navigator.of(context);
+                  final error = await context.read<WalletCubit>().addCard(
                     number: _number.text,
                     holder: _name.text,
                     expiry: _exp.text,
                   );
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tarjeta agregada')),
-                  );
+                  if (error == null) navigator.pop();
+                  messenger.showSnackBar(SnackBar(content: Text(error ?? 'Tarjeta guardada')));
                 },
                 child: const Text('Guardar tarjeta'),
               ),
@@ -462,11 +462,21 @@ Future<PaymentChoice?> showPaymentPicker(
                   enabled: settings.acceptsCash,
                 ),
                 option(
+                  icon: Icons.bolt_rounded,
+                  color: AppColors.primary,
+                  title: 'Transferencia Bre-B',
+                  subtitle: settings.acceptsBreb
+                      ? 'Desde la app de tu banco a la llave ${settings.brebKey} · sin costo'
+                      : 'No disponible en esta tienda',
+                  choice: const PaymentChoice.breb(),
+                  enabled: settings.acceptsBreb,
+                ),
+                option(
                   icon: Icons.phone_iphone_rounded,
                   color: const Color(0xFFDA0081),
-                  title: 'Nequi',
+                  title: 'Transferencia Nequi',
                   subtitle: settings.acceptsNequi
-                      ? 'Te llega una notificación al ${wallet.nequiPhone}'
+                      ? 'Al Nequi del emprendedor · sin costo'
                       : 'No disponible en esta tienda',
                   choice: const PaymentChoice.nequi(),
                   enabled: settings.acceptsNequi,

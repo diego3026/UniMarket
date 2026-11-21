@@ -237,7 +237,7 @@ class ManageUsersPage extends StatelessWidget {
               context.read<AdminUsersCubit>().deleteUser(user.id);
               Navigator.pop(dialogContext);
             },
-            child: const Text('Eliminar'),
+            child: const Text('Suspender cuenta'),
           ),
         ],
       ),

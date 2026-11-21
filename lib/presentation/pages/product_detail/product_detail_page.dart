@@ -185,7 +185,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                           label:
                               context
                                   .read<PromotionsCubit>()
-                                  .bestFor(p.storeId, p.id, p.price)
+                                  .discountFor(p.storeId, p.id)
                                   ?.title ??
                               'En promoción',
                           color: AppColors.seller,

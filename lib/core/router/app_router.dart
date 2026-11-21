@@ -52,6 +52,7 @@ import '../../presentation/pages/promos/promos_page.dart';
 import '../../presentation/pages/registration/registration_page.dart';
 import '../../presentation/pages/search/search_page.dart';
 import '../../presentation/pages/seller/create_product_page.dart';
+import '../../presentation/viewmodels/market/seller_products_cubit.dart';
 import '../../presentation/pages/seller/schedule_page.dart';
 import '../../presentation/pages/seller/seller_home_page.dart';
 import '../../presentation/pages/seller/seller_menu_page.dart';
@@ -163,7 +164,7 @@ GoRouter buildRouter() {
       page(AppRoutes.recoverPassword, (_) => const PasswordRecoveryPage()),
       page(
         AppRoutes.confirmEmail,
-        (s) => EmailConfirmationPage(email: (s.extra as String?) ?? ''),
+        (s) => const EmailConfirmationPage(),
       ),
 
       // ── Cliente ─────────────────────────────────────────
@@ -301,7 +302,7 @@ GoRouter buildRouter() {
       ),
       page(
         AppRoutes.sellerNewProduct,
-        (_) => seller(const CreateProductPage()),
+        (s) => seller(CreateProductPage(initial: s.extra as SellerProduct?)),
       ),
       page(
         AppRoutes.sellerPromoForm,

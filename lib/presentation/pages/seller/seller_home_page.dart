@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:unimarket/presentation/viewmodels/catalog/catalog_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -7,11 +10,9 @@ import '../../../constants/app_colors.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../data/datasources/mock/market_mock_data.dart';
 import '../../../domain/entities/market_entities.dart';
 import '../../viewmodels/market/market_cubits.dart';
 import '../../widgets/ui/app_widgets.dart';
-import 'seller_mock.dart';
 
 /// Inicio del emprendedor (Figma Emprendedor: "Principal Tienda").
 /// Las órdenes son las mismas que el cliente sigue en "Mis pedidos".
@@ -30,6 +31,22 @@ class _SellerHomePageState extends State<SellerHomePage> {
     'Entregadas',
   ];
   String _tab = 'Por aceptar';
+  Timer? _poll;
+
+  @override
+  void initState() {
+    super.initState();
+    // Los pedidos nuevos llegan sin recargar: se consulta cada 20 s.
+    _poll = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (mounted) context.read<MarketOrdersCubit>().loadStore();
+    });
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
 
   bool _match(MarketOrder o) => switch (_tab) {
     'Por aceptar' => o.status == OrderStatus.pending,
@@ -41,8 +58,9 @@ class _SellerHomePageState extends State<SellerHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<CatalogCubit>(); // se reconstruye cuando llegan los datos de la API
     final t = Theme.of(context).textTheme;
-    final store = SellerMock.store;
+    final store = Catalog.myStoreOrEmpty;
     final settings = context.watch<StoreSettingsCubit>().of(store.id);
     final all = context.watch<MarketOrdersCubit>().forStore(store.id);
     final orders = all.where(_match).toList();
@@ -174,7 +192,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
-                                    'Recogen en ${MarketMockData.place(settings.pickupPlaceId).name} · ${store.schedule}',
+                                    'Recogen en ${Catalog.place(settings.pickupPlaceId).name} · ${store.schedule}',
                                     style: const TextStyle(
                                       color: Colors.white70,
                                       fontSize: 12,
@@ -345,16 +363,121 @@ class _SellerOrderCard extends StatelessWidget {
   final MarketOrder order;
   const _SellerOrderCard({required this.order});
 
+  static void _snack(BuildContext context, String m) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+
+  Future<String?> _ask(BuildContext context, {required String title, required String label, String? hint,
+      bool digits = false, required String confirm}) {
+    final c = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: c,
+          autofocus: true,
+          maxLength: digits ? 4 : 200,
+          keyboardType: digits ? TextInputType.number : TextInputType.text,
+          decoration: InputDecoration(labelText: label, hintText: hint),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(d, c.text.trim()), child: Text(confirm)),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _advance(BuildContext context, MarketOrder o) async {
+    final cubit = context.read<MarketOrdersCubit>();
+    String? code;
+    if (o.status == OrderStatus.ready && o.mode == FulfillmentMode.pickup) {
+      code = await _ask(context,
+          title: 'Entregar pedido #${o.id}',
+          label: 'Código de 4 dígitos del cliente',
+          hint: '0000',
+          digits: true,
+          confirm: 'Entregar pedido');
+      if (code == null) return;
+      if (!RegExp(r'^\d{4}$').hasMatch(code)) {
+        if (context.mounted) _snack(context, 'El código tiene 4 dígitos');
+        return;
+      }
+    }
+    final err = await cubit.advance(o.id, pickupCode: code);
+    if (!context.mounted) return;
+    _snack(context, err ?? 'Orden #${o.id}: ${cubit.byId(o.id)?.status.label.toLowerCase() ?? 'actualizada'}. El cliente ya lo ve.');
+  }
+
+  Future<void> _reject(BuildContext context, MarketOrder o) async {
+    final cubit = context.read<MarketOrdersCubit>();
+    final reason = await _ask(context,
+        title: 'Rechazar pedido #${o.id}',
+        label: 'Motivo (lo verá el cliente)',
+        hint: 'Ej. Se nos acabó el producto',
+        confirm: 'Rechazar pedido');
+    if (reason == null) return;
+    final err = await cubit.cancel(o.id, reason: reason);
+    if (context.mounted) _snack(context, err ?? 'Pedido #${o.id} rechazado');
+  }
+
+  Future<void> _confirmPayment(BuildContext context, MarketOrder o, bool received) async {
+    final err = await context.read<MarketOrdersCubit>().confirmPayment(o.id, received);
+    if (context.mounted) {
+      _snack(context, err ?? (received ? 'Pago confirmado' : 'Le avisamos al cliente que no llegó el pago'));
+    }
+  }
+
+  Widget _paymentBox(BuildContext context, MarketOrder o) {
+    final t = Theme.of(context).textTheme;
+    final (Color color, String text) = switch (o.paymentStatus) {
+      PaymentStatus.paid => (AppColors.success, 'Pago recibido'),
+      PaymentStatus.reported => (
+        AppColors.warning,
+        'El cliente dice que ya pagó${o.paymentReference.isEmpty ? '' : ' · ref. ${o.paymentReference}'}. Revisa tu ${o.paymentKind == PaymentKind.nequi ? 'Nequi' : 'banco'}.',
+      ),
+      PaymentStatus.failed => (AppColors.danger, 'Marcaste que el pago no llegó'),
+      _ => (AppColors.textSecondary, 'Esperando la transferencia del cliente'),
+    };
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(text, style: t.bodySmall?.copyWith(color: color, fontWeight: FontWeight.w600)),
+          if (o.paymentStatus == PaymentStatus.reported)
+            Wrap(
+              spacing: 8,
+              children: [
+                TextButton(
+                  onPressed: () => _confirmPayment(context, o, false),
+                  child: const Text('No me llegó'),
+                ),
+                FilledButton.tonal(
+                  onPressed: () => _confirmPayment(context, o, true),
+                  child: const Text('Confirmar pago'),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final o = order;
-    final cubit = context.read<MarketOrdersCubit>();
     final pickup = o.mode == FulfillmentMode.pickup;
     final action = switch (o.status) {
       OrderStatus.pending => 'Aceptar',
       OrderStatus.preparing => pickup ? 'Marcar listo' : 'Enviar pedido',
-      OrderStatus.ready => 'Entregado (código ${o.pickupCode})',
+      OrderStatus.ready => 'Entregar (pedir código)',
       OrderStatus.onTheWay => 'Marcar entregado',
       _ => null,
     };
@@ -391,7 +514,7 @@ class _SellerOrderCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${o.customerName} · ${pickup ? 'Recoge en tu punto' : 'Entregar en ${MarketMockData.place(o.placeId).name}${o.notes.isEmpty ? '' : ' (${o.notes})'}'}',
+            '${o.customerName} · ${pickup ? 'Recoge en tu punto' : 'Entregar en ${Catalog.place(o.placeId).name}${o.notes.isEmpty ? '' : ' (${o.notes})'}'}',
             style: t.bodySmall,
           ),
           const SizedBox(height: 8),
@@ -405,6 +528,7 @@ class _SellerOrderCard extends StatelessWidget {
                 style: t.bodySmall?.copyWith(color: AppColors.success),
               ),
             ),
+          if (o.paymentKind.isTransfer && o.status != OrderStatus.cancelled) _paymentBox(context, o),
           const SizedBox(height: 10),
           Wrap(
             alignment: WrapAlignment.spaceBetween,
@@ -430,7 +554,7 @@ class _SellerOrderCard extends StatelessWidget {
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.danger,
                       ),
-                      onPressed: () => cubit.cancel(o.id),
+                      onPressed: () => _reject(context, o),
                       child: const Text('Rechazar'),
                     ),
                   if (action != null)
@@ -440,16 +564,7 @@ class _SellerOrderCard extends StatelessWidget {
                         minimumSize: const Size(0, 42),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                       ),
-                      onPressed: () {
-                        cubit.advance(o.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Orden #${o.id}: ${cubit.byId(o.id)!.status.label.toLowerCase()}. El cliente ya lo ve.',
-                            ),
-                          ),
-                        );
-                      },
+                      onPressed: () => _advance(context, o),
                       child: Text(action),
                     )
                   else

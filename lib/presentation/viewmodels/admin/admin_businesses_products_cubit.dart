@@ -1,230 +1,90 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../core/network/api_client.dart';
 import 'admin_businesses_products_state.dart';
 
-// ==================== BUSINESSES CUBIT ====================
+/// Revisión de tiendas (GET /admin/stores, POST /admin/stores/{id}/review).
 class AdminBusinessesCubit extends Cubit<AdminBusinessesState> {
-  AdminBusinessesCubit() : super(const AdminBusinessesInitial());
+  final ApiClient _api;
+  AdminBusinessesCubit(this._api) : super(const AdminBusinessesInitial());
 
-  final List<AdminBusinessModel> _businesses = [
-    AdminBusinessModel(
-      id: 1,
-      name: 'Tienda de Ropa María',
-      owner: 'María García',
-      category: 'Ropa y Accesorios',
-      status: 'Activo',
-      products: 45,
-      sales: 234,
-      rating: 4.8,
-      revenue: 12450000,
-      createdAt: DateTime(2024, 1, 15),
-    ),
-    AdminBusinessModel(
-      id: 2,
-      name: 'Comidas Caseras Juan',
-      owner: 'Juan López',
-      category: 'Comida',
-      status: 'Activo',
-      products: 12,
-      sales: 89,
-      rating: 4.5,
-      revenue: 5670000,
-      createdAt: DateTime(2024, 2, 1),
-    ),
-    AdminBusinessModel(
-      id: 3,
-      name: 'Tech Shop',
-      owner: 'Carlos Peña',
-      category: 'Tecnología',
-      status: 'Suspendido',
-      products: 78,
-      sales: 156,
-      rating: 4.3,
-      revenue: 8900000,
-      createdAt: DateTime(2023, 11, 20),
-    ),
-  ];
+  List<AdminBusinessModel> _businesses = [];
 
-  void loadBusinesses() {
-    emit(const AdminBusinessesLoading());
+  Future<void> loadBusinesses() async {
+    if (_businesses.isEmpty) emit(const AdminBusinessesLoading());
     try {
-      emit(
-        AdminBusinessesLoaded(
-          businesses: _businesses,
-          totalCount: _businesses.length,
-        ),
-      );
-    } catch (e) {
-      emit(
-        AdminBusinessesError(
-          'Error al cargar emprendimientos: ${e.toString()}',
-        ),
-      );
+      final r = await _api.get('/admin/stores', query: {'size': 100}) as Map<String, dynamic>;
+      _businesses = [for (final b in r['items'] as List) AdminBusinessModel.fromJson(b as Map<String, dynamic>)]
+        // las pendientes de revisión primero
+        ..sort((a, b) => (a.status == 'Pendiente' ? 0 : 1).compareTo(b.status == 'Pendiente' ? 0 : 1));
+      emit(AdminBusinessesLoaded(businesses: _businesses, totalCount: (r['total'] as num).toInt()));
+    } on ApiException catch (e) {
+      emit(AdminBusinessesError(e.message));
     }
   }
 
-  void suspendBusiness(int businessId) {
-    emit(const AdminBusinessesLoading());
+  Future<void> _review(String id, String status, [String note = '']) async {
     try {
-      final index = _businesses.indexWhere((b) => b.id == businessId);
-      if (index != -1) {
-        _businesses[index] = _businesses[index].copyWith(status: 'Suspendido');
-      }
-      loadBusinesses();
-    } catch (e) {
-      emit(
-        AdminBusinessesError(
-          'Error al suspender emprendimiento: ${e.toString()}',
-        ),
-      );
+      await _api.post('/admin/stores/$id/review', data: {'status': status, 'note': note});
+    } on ApiException catch (e) {
+      emit(AdminBusinessesError(e.message));
     }
+    await loadBusinesses();
   }
 
-  void activateBusiness(int businessId) {
-    emit(const AdminBusinessesLoading());
-    try {
-      final index = _businesses.indexWhere((b) => b.id == businessId);
-      if (index != -1) {
-        _businesses[index] = _businesses[index].copyWith(status: 'Activo');
-      }
-      loadBusinesses();
-    } catch (e) {
-      emit(
-        AdminBusinessesError(
-          'Error al activar emprendimiento: ${e.toString()}',
-        ),
-      );
-    }
-  }
+  Future<void> suspendBusiness(String id) => _review(id, 'suspended');
 
-  void deleteBusiness(int businessId) {
-    emit(const AdminBusinessesLoading());
-    try {
-      _businesses.removeWhere((b) => b.id == businessId);
-      loadBusinesses();
-    } catch (e) {
-      emit(
-        AdminBusinessesError(
-          'Error al eliminar emprendimiento: ${e.toString()}',
-        ),
-      );
-    }
-  }
+  /// Aprueba una tienda pendiente o reactiva una suspendida.
+  Future<void> activateBusiness(String id) => _review(id, 'approved');
 
-  Map<String, dynamic> getBusinessStatistics() {
-    return {
-      'totalBusinesses': _businesses.length,
-      'activeBusinesses': _businesses.where((b) => b.status == 'Activo').length,
-      'totalRevenue': _businesses.fold<double>(0, (sum, b) => sum + b.revenue),
-      'averageRating': _businesses.isNotEmpty
-          ? _businesses.fold<double>(0, (sum, b) => sum + b.rating) /
-                _businesses.length
-          : 0,
-    };
-  }
+  Future<void> deleteBusiness(String id) => _review(id, 'rejected');
+
+  Future<void> rejectBusiness(String id, String note) => _review(id, 'rejected', note);
+
+  Map<String, dynamic> getBusinessStatistics() => {
+    'totalBusinesses': _businesses.length,
+    'activeBusinesses': _businesses.where((b) => b.status == 'Activo').length,
+    'pendingBusinesses': _businesses.where((b) => b.status == 'Pendiente').length,
+    'averageRating': _businesses.isEmpty
+        ? 0.0
+        : _businesses.map((b) => b.rating).reduce((a, b) => a + b) / _businesses.length,
+  };
 }
 
-// ==================== PRODUCTS CUBIT ====================
+/// Moderación de productos (GET /admin/products, POST /admin/products/{id}/moderate).
 class AdminProductsCubit extends Cubit<AdminProductsState> {
-  AdminProductsCubit() : super(const AdminProductsInitial());
+  final ApiClient _api;
+  AdminProductsCubit(this._api) : super(const AdminProductsInitial());
 
-  final List<AdminProductModel> _products = [
-    AdminProductModel(
-      id: 1,
-      name: 'Camiseta Estampada',
-      seller: 'Tienda de Ropa María',
-      category: 'Ropa',
-      status: 'Activo',
-      price: 25000,
-      stock: 45,
-      rating: 4.8,
-      reviewCount: 34,
-      createdAt: DateTime.now().subtract(const Duration(days: 30)),
-    ),
-    AdminProductModel(
-      id: 2,
-      name: 'Zapatos Deportivos',
-      seller: 'Tienda de Ropa María',
-      category: 'Calzado',
-      status: 'Activo',
-      price: 85000,
-      stock: 12,
-      rating: 4.5,
-      reviewCount: 28,
-      createdAt: DateTime.now().subtract(const Duration(days: 20)),
-    ),
-    AdminProductModel(
-      id: 3,
-      name: 'Accesorio Electrónico',
-      seller: 'Tech Shop',
-      category: 'Tecnología',
-      status: 'Rechazado',
-      price: 150000,
-      stock: 0,
-      rating: 3.2,
-      reviewCount: 12,
-      createdAt: DateTime.now().subtract(const Duration(days: 15)),
-    ),
-  ];
+  List<AdminProductModel> _products = [];
 
-  void loadProducts() {
-    emit(const AdminProductsLoading());
+  Future<void> loadProducts() async {
+    if (_products.isEmpty) emit(const AdminProductsLoading());
     try {
-      emit(
-        AdminProductsLoaded(products: _products, totalCount: _products.length),
-      );
-    } catch (e) {
-      emit(AdminProductsError('Error al cargar productos: ${e.toString()}'));
+      final r = await _api.get('/admin/products', query: {'size': 100}) as Map<String, dynamic>;
+      _products = [for (final p in r['items'] as List) AdminProductModel.fromJson(p as Map<String, dynamic>)];
+      emit(AdminProductsLoaded(products: _products, totalCount: (r['total'] as num).toInt()));
+    } on ApiException catch (e) {
+      emit(AdminProductsError(e.message));
     }
   }
 
-  void approveProduct(int productId) {
-    emit(const AdminProductsLoading());
+  Future<void> _moderate(String id, bool hidden) async {
     try {
-      final index = _products.indexWhere((p) => p.id == productId);
-      if (index != -1) {
-        _products[index] = _products[index].copyWith(status: 'Activo');
-      }
-      loadProducts();
-    } catch (e) {
-      emit(AdminProductsError('Error al aprobar producto: ${e.toString()}'));
+      await _api.post('/admin/products/$id/moderate', data: {'isHidden': hidden});
+    } on ApiException catch (e) {
+      emit(AdminProductsError(e.message));
     }
+    await loadProducts();
   }
 
-  void rejectProduct(int productId) {
-    emit(const AdminProductsLoading());
-    try {
-      final index = _products.indexWhere((p) => p.id == productId);
-      if (index != -1) {
-        _products[index] = _products[index].copyWith(status: 'Rechazado');
-      }
-      loadProducts();
-    } catch (e) {
-      emit(AdminProductsError('Error al rechazar producto: ${e.toString()}'));
-    }
-  }
+  Future<void> approveProduct(String id) => _moderate(id, false);
+  Future<void> rejectProduct(String id) => _moderate(id, true);
+  Future<void> deleteProduct(String id) => _moderate(id, true);
 
-  void deleteProduct(int productId) {
-    emit(const AdminProductsLoading());
-    try {
-      _products.removeWhere((p) => p.id == productId);
-      loadProducts();
-    } catch (e) {
-      emit(AdminProductsError('Error al eliminar producto: ${e.toString()}'));
-    }
-  }
-
-  Map<String, dynamic> getProductStatistics() {
-    return {
-      'totalProducts': _products.length,
-      'activeProducts': _products.where((p) => p.status == 'Activo').length,
-      'pendingApproval': _products.where((p) => p.status == 'Pendiente').length,
-      'rejectedProducts': _products
-          .where((p) => p.status == 'Rechazado')
-          .length,
-      'averageRating': _products.isNotEmpty
-          ? _products.fold<double>(0, (sum, p) => sum + p.rating) /
-                _products.length
-          : 0,
-    };
-  }
+  Map<String, dynamic> getProductStatistics() => {
+    'totalProducts': _products.length,
+    'activeProducts': _products.where((p) => p.status == 'Activo').length,
+    'hiddenProducts': _products.where((p) => p.status == 'Rechazado').length,
+  };
 }

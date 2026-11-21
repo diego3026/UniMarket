@@ -1,4 +1,3 @@
-import 'package:unimarket/core/utils/formatters.dart';
 import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -146,9 +145,8 @@ class ManageBusinessPage extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildStatBubble('${business.products}', 'Productos'),
-              _buildStatBubble('${business.sales}', 'Ventas'),
-              _buildStatBubble('${business.rating}', 'Rating'),
+              _buildStatBubble(business.rating.toStringAsFixed(1), 'Rating'),
+              _buildStatBubble('${business.sales}', 'Reseñas'),
             ],
           ),
           const SizedBox(height: 12),
@@ -181,7 +179,7 @@ class ManageBusinessPage extends StatelessWidget {
                     size: 16,
                   ),
                   label: Text(
-                    business.status == 'Activo' ? 'Suspender' : 'Activar',
+                    business.status == 'Activo' ? 'Suspender' : (business.status == 'Pendiente' ? 'Aprobar' : 'Activar'),
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: business.status == 'Activo'
@@ -230,10 +228,10 @@ class ManageBusinessPage extends StatelessWidget {
           children: [
             _buildDetailRow('Propietario:', business.owner),
             _buildDetailRow('Categoría:', business.category),
-            _buildDetailRow('Productos:', '${business.products}'),
-            _buildDetailRow('Ventas:', '${business.sales}'),
-            _buildDetailRow('Rating:', '${business.rating} ⭐'),
-            _buildDetailRow('Ingresos:', formatCop(business.revenue)),
+            _buildDetailRow('Correo:', business.ownerEmail),
+            _buildDetailRow('Reseñas:', '${business.sales}'),
+            _buildDetailRow('Rating:', '${business.rating.toStringAsFixed(1)} ⭐'),
+            if (business.reviewNote.isNotEmpty) _buildDetailRow('Nota:', business.reviewNote),
             _buildDetailRow('Estado:', business.status),
           ],
         ),

@@ -1,181 +1,90 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../core/network/api_client.dart';
 import 'reports_state.dart';
 
+/// Reportes de la plataforma (GET /admin/reports?days=N).
 class ReportsCubit extends Cubit<ReportsState> {
-  ReportsCubit() : super(const ReportsInitial());
+  final ApiClient _api;
+  ReportsCubit(this._api) : super(const ReportsInitial());
 
-  String _selectedPeriod = 'Este mes';
+  String selectedPeriod = 'Hoy';
+  ReportsData? _data;
+  Map<String, dynamic> _raw = const {};
 
-  /// Load reports data
-  void loadReports(String period) {
+  static const _days = {'Hoy': 1, 'Esta semana': 7, 'Este mes': 30, 'Este año': 365};
+
+  Future<void> loadReports(String period) async {
+    selectedPeriod = period;
     emit(const ReportsLoading());
-    _selectedPeriod = period;
     try {
-      // TODO: Replace with actual API call
-      // final data = await adminRepository.getReports(period);
-
-      final data = _generateReportsData(period);
-      emit(ReportsLoaded(data));
-    } catch (e) {
-      emit(ReportsError('Error al cargar reportes: ${e.toString()}'));
-    }
-  }
-
-  /// Generate sample reports data based on period
-  ReportsData _generateReportsData(String period) {
-    late double totalSales;
-    late int totalOrders;
-    late int newUsers;
-
-    switch (period) {
-      case 'Hoy':
-        totalSales = 2450000;
-        totalOrders = 23;
-        newUsers = 5;
-        break;
-      case 'Esta semana':
-        totalSales = 12450000;
-        totalOrders = 145;
-        newUsers = 28;
-        break;
-      case 'Este mes':
-        totalSales = 45230000;
-        totalOrders = 567;
-        newUsers = 123;
-        break;
-      case 'Este año':
-        totalSales = 350000000;
-        totalOrders = 4234;
-        newUsers = 890;
-        break;
-      default:
-        totalSales = 45230000;
-        totalOrders = 567;
-        newUsers = 123;
-    }
-
-    return ReportsData(
-      totalSales: totalSales,
-      totalOrders: totalOrders,
-      totalUsers: 1234,
-      totalBusinesses: 45,
-      topSellers: [
-        const TopSeller(
-          rank: 1,
-          name: 'Tienda de Ropa María',
-          revenue: 12450000,
-          sales: 234,
+      final days = _days[period] ?? 30;
+      final r = await _api.get('/admin/reports', query: {'days': days}) as Map<String, dynamic>;
+      // Para el crecimiento comparamos con usuarios totales (el backend no
+      // expone altas por fecha); se muestra el total por rol.
+      final users = Map<String, dynamic>.from(r['usersByRole'] as Map);
+      final stores = Map<String, dynamic>.from(r['storesByStatus'] as Map);
+      int sum(Map<String, dynamic> m) => m.values.fold(0, (a, v) => a + (v as num).toInt());
+      final top = r['topStores'] as List;
+      _raw = r;
+      _data = ReportsData(
+        totalSales: (r['grossSales'] as num).toDouble(),
+        totalOrders: (r['ordersTotal'] as num).toInt(),
+        totalUsers: sum(users),
+        totalBusinesses: (stores['approved'] as num?)?.toInt() ?? 0,
+        topSellers: [
+          for (var i = 0; i < top.length; i++)
+            TopSeller(
+              rank: i + 1,
+              name: (top[i]['name'] ?? '').toString(),
+              revenue: (top[i]['total'] as num).toDouble(),
+              sales: (top[i]['orders'] as num).toInt(),
+            ),
+        ],
+        salesData: [
+          for (final d in r['ordersByDay'] as List)
+            SalesData(
+              date: DateTime.tryParse(d['date'].toString()) ?? DateTime.now(),
+              amount: (d['total'] as num).toDouble(),
+              orderCount: (d['orders'] as num).toInt(),
+            ),
+        ],
+        userGrowth: UserGrowthData(
+          newUsersToday: (users['consumer'] as num?)?.toInt() ?? 0,
+          newUsersThisWeek: (users['entrepreneur'] as num?)?.toInt() ?? 0,
+          newUsersThisMonth: sum(users),
+          growthPercentage: 0,
         ),
-        const TopSeller(
-          rank: 2,
-          name: 'Comidas Caseras Juan',
-          revenue: 8900000,
-          sales: 89,
-        ),
-        const TopSeller(
-          rank: 3,
-          name: 'Tech Shop',
-          revenue: 7230000,
-          sales: 156,
-        ),
-      ],
-      salesData: _generateSalesData(period),
-      userGrowth: UserGrowthData(
-        newUsersToday: period == 'Hoy' ? 5 : 12,
-        newUsersThisWeek: period.contains('semana') ? 28 : 45,
-        newUsersThisMonth: newUsers,
-        growthPercentage: 12.5,
-      ),
-      reportDate: DateTime.now(),
-    );
-  }
-
-  /// Generate sales data for chart
-  List<SalesData> _generateSalesData(String period) {
-    final today = DateTime.now();
-    final salesList = <SalesData>[];
-
-    if (period == 'Hoy') {
-      // Hourly data
-      for (int i = 0; i < 24; i++) {
-        salesList.add(
-          SalesData(
-            date: today.subtract(Duration(hours: 24 - i)),
-            amount: (100 + (i * 50 % 300)).toDouble(),
-            orderCount: (5 + (i % 10)).toInt(),
-          ),
-        );
-      }
-    } else if (period == 'Esta semana') {
-      // Daily data
-      for (int i = 0; i < 7; i++) {
-        salesList.add(
-          SalesData(
-            date: today.subtract(Duration(days: 7 - i)),
-            amount: (1500 + (i * 300 % 2000)).toDouble(),
-            orderCount: (20 + (i * 5)).toInt(),
-          ),
-        );
-      }
-    } else if (period == 'Este mes') {
-      // Weekly data
-      for (int i = 0; i < 4; i++) {
-        salesList.add(
-          SalesData(
-            date: today.subtract(Duration(days: (4 - i) * 7)),
-            amount: (10000 + (i * 1000)).toDouble(),
-            orderCount: (150 + (i * 50)).toInt(),
-          ),
-        );
-      }
-    } else {
-      // Monthly data
-      for (int i = 0; i < 12; i++) {
-        salesList.add(
-          SalesData(
-            date: today.subtract(Duration(days: (12 - i) * 30)),
-            amount: (25000 + (i * 2000)).toDouble(),
-            orderCount: (400 + (i * 100)).toInt(),
-          ),
-        );
-      }
-    }
-
-    return salesList;
-  }
-
-  /// Export reports as PDF
-  void exportReportsPDF() {
-    emit(const ReportsExporting());
-    try {
-      // TODO: Implement PDF export
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      emit(ReportsExported('/storage/reports_$timestamp.pdf'));
-      loadReports(_selectedPeriod);
-    } catch (e) {
-      emit(ReportsError('Error al exportar PDF: ${e.toString()}'));
+        reportDate: DateTime.now(),
+      );
+      emit(ReportsLoaded(_data!));
+    } on ApiException catch (e) {
+      emit(ReportsError(e.message));
     }
   }
 
-  /// Export reports as Excel
-  void exportReportsExcel() {
-    emit(const ReportsExporting());
-    try {
-      // TODO: Implement Excel export
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      emit(ReportsExported('/storage/reports_$timestamp.xlsx'));
-      loadReports(_selectedPeriod);
-    } catch (e) {
-      emit(ReportsError('Error al exportar Excel: ${e.toString()}'));
+  /// Resumen en CSV (separado por ;) listo para pegar en una hoja de cálculo.
+  String? exportCsv() {
+    final d = _data;
+    if (d == null) return null;
+    final b = StringBuffer()
+      ..writeln('Reporte UniMarket;$selectedPeriod')
+      ..writeln('Ventas;${d.totalSales.toInt()}')
+      ..writeln('Pedidos;${d.totalOrders}')
+      ..writeln('Ticket promedio;${_raw['averageTicket'] ?? 0}')
+      ..writeln('Usuarios;${d.totalUsers}')
+      ..writeln('Tiendas activas;${d.totalBusinesses}')
+      ..writeln()
+      ..writeln('Fecha;Pedidos;Ventas');
+    for (final s in d.salesData) {
+      b.writeln('${s.date.toIso8601String().substring(0, 10)};${s.orderCount};${s.amount.toInt()}');
     }
-  }
-
-  /// Get period comparison
-  Map<String, dynamic> getPeriodComparison(
-    String currentPeriod,
-    String previousPeriod,
-  ) {
-    // TODO: Implement period comparison logic
-    return {'salesChange': 12.5, 'ordersChange': 8.3, 'usersChange': 15.2};
+    b
+      ..writeln()
+      ..writeln('Tienda;Pedidos;Ventas');
+    for (final t in d.topSellers) {
+      b.writeln('${t.name};${t.sales};${t.revenue.toInt()}');
+    }
+    return b.toString();
   }
 }

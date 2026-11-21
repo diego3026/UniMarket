@@ -1,9 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:unimarket/domain/entities/market_entities.dart';
 import 'package:unimarket/domain/entities/product_entity.dart';
-import 'package:unimarket/presentation/models/cart_item.dart';
 import 'package:unimarket/presentation/viewmodels/cart/cart_cubit.dart';
-import 'package:unimarket/presentation/viewmodels/market/market_cubits.dart';
+import 'package:unimarket/data/api/mappers.dart';
 
 ProductEntity _product(String id, double price, {String store = 's2'}) =>
     ProductEntity(
@@ -45,62 +44,82 @@ void main() {
       expect(p.apply(3000), 0);
     });
 
-    test('cupón: valida tienda, compra mínima y código', () {
-      final promos = PromotionsCubit();
-      expect(promos.validateCoupon('NOEXISTE', 's2', 50000).error, isNotNull);
-      expect(
-        promos.validateCoupon('campus10', 's1', 50000).error,
-        contains('otro'),
+    test('cupón porcentual redondea a cientos y no supera el subtotal', () {
+      const p = PromotionEntity(
+        id: 'c',
+        storeId: 's2',
+        title: 'Cupón',
+        kind: PromotionKind.coupon,
+        type: DiscountType.percent,
+        value: 15,
+        code: 'UNI15',
       );
-      expect(
-        promos.validateCoupon('CAMPUS10', 's2', 10000).error,
-        contains('mínima'),
+      expect(p.couponDiscount(23450), 3500);
+      const fixed = PromotionEntity(
+        id: 'f',
+        storeId: 's2',
+        title: 'Fijo',
+        kind: PromotionKind.coupon,
+        type: DiscountType.fixed,
+        value: 10000,
+        code: 'MIL',
       );
-      final ok = promos.validateCoupon('campus10', 's2', 20000);
-      expect(ok.error, isNull);
-      expect(ok.discount, 2000);
-    });
-
-    test('pausar una promoción la saca de las activas', () {
-      final promos = PromotionsCubit();
-      expect(promos.bestFor('s2', '6', 18000), isNotNull);
-      promos.toggle('pr2', false);
-      expect(promos.bestFor('s2', '6', 18000), isNull);
+      expect(fixed.couponDiscount(4000), 4000);
     });
   });
 
-  group('Pedidos', () {
-    test('un pedido para recoger pasa por "listo" y termina entregado', () {
-      final orders = MarketOrdersCubit();
-      final o = orders.place(
-        storeId: 's2',
-        storeName: 'MaracuMango',
-        customerName: 'Ashly Peralta',
-        items: [CartItem(product: _product('3', 24000), quantity: 2)],
-        mode: FulfillmentMode.pickup,
-        placeId: 'plaza',
-        notes: '',
-        deliveryFee: 0,
-        coupon: null,
-        couponDiscount: 0,
-        paymentLabel: 'Nequi',
-      );
-      expect(o.total, 48000);
+  group('Mapeo de la API', () {
+    test('un pedido con transferencia trae a quién pagar', () {
+      final o = orderFrom({
+        'id': 'a1',
+        'pickupCode': '4821',
+        'storeId': 's2',
+        'storeName': 'MaracuMango',
+        'customerName': 'Ana',
+        'lines': [
+          {'productId': 'p1', 'name': 'Limón Coco', 'category': 'Bebidas', 'unitPrice': 6000, 'quantity': 2},
+        ],
+        'subtotal': 12000,
+        'productDiscount': 0,
+        'couponDiscount': 1000,
+        'deliveryFee': 0,
+        'total': 11000,
+        'mode': 'pickup',
+        'paymentKind': 'breb',
+        'paymentStatus': 'pending',
+        'payTo': {'kind': 'breb', 'key': '@maracumango', 'holderName': 'Laura', 'amount': 11000},
+        'status': 'pending',
+        'createdAt': '2026-11-20T15:00:00Z',
+        'history': {'pending': '2026-11-20T15:00:00Z'},
+      });
+      expect(o.id, 'a1');
+      expect(o.lines.single.quantity, 2);
+      expect(o.paymentKind, PaymentKind.breb);
+      expect(o.payTo?.key, '@maracumango');
       expect(o.status, OrderStatus.pending);
-      orders.advance(o.id);
-      orders.advance(o.id);
-      expect(orders.byId(o.id)!.status, OrderStatus.ready);
-      orders.advance(o.id);
-      expect(orders.byId(o.id)!.status, OrderStatus.delivered);
-      expect(orders.byId(o.id)!.next, isNull);
+      expect(o.mode, FulfillmentMode.pickup);
     });
 
-    test('un domicilio pasa por "en camino"', () {
-      final orders = MarketOrdersCubit();
-      final o = orders.byId('1045')!; // domicilio pendiente de ejemplo
-      orders.advance(o.id);
-      orders.advance(o.id);
-      expect(orders.byId(o.id)!.status, OrderStatus.onTheWay);
+    test('un producto con promoción usa discountPrice', () {
+      final p = productFrom({
+        'id': 'p1',
+        'storeId': 's2',
+        'storeName': 'MaracuMango',
+        'name': 'Picada',
+        'description': '',
+        'category': 'Frutas',
+        'price': 10000,
+        'discountPrice': 8000,
+        'imageUrl': '',
+        'stock': 3,
+        'isAvailable': true,
+        'isFeatured': false,
+        'rating': 4.5,
+        'ratingCount': 2,
+        'createdAt': '2026-11-01T00:00:00Z',
+      });
+      expect(p.price, 10000);
+      expect(p.finalPrice, 8000);
     });
   });
 

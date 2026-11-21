@@ -16,6 +16,10 @@ class StoreEntity extends Equatable {
   final String imageUrl;
   final List<String> menuSections;
 
+  /// pending | approved | rejected | suspended (lo decide el administrador).
+  final String status;
+  final int ratingCount;
+
   const StoreEntity({
     required this.id,
     required this.name,
@@ -29,8 +33,12 @@ class StoreEntity extends Equatable {
     this.isOpen = true,
     this.imageUrl = '',
     this.menuSections = const [],
+    this.status = 'approved',
+    this.ratingCount = 0,
   });
 
+  bool get isApproved => status == 'approved';
+
   @override
-  List<Object?> get props => [id, name, category, isOpen];
+  List<Object?> get props => [id, name, category, isOpen, status, rating, menuSections];
 }

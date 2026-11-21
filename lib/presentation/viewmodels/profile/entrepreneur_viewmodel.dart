@@ -1,27 +1,28 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-const _kEntrepreneurRequestsKey = 'entrepreneur_requests';
+import '../../../core/injection_container.dart';
+import '../../../core/network/api_client.dart';
+import '../auth/auth_cubit.dart';
+import '../catalog/catalog_cubit.dart';
 
 class EntrepreneurViewModel extends ChangeNotifier {
   String businessName = '';
   String ownerName = '';
-  String category = 'Alimentos';
+  String category = '';
   String phone = '';
   String address = '';
   String description = '';
   bool acceptedTerms = false;
   bool submitting = false;
 
-  final List<String> categories = [
-    'Alimentos',
-    'Ropa',
-    'Electrónica',
-    'Hogar',
-    'Belleza',
-    'Otros',
-  ];
+  /// Categorías del servidor (GET /categories) o una lista por defecto.
+  final List<String> categories = Catalog.categories.isNotEmpty
+      ? List.of(Catalog.categories)
+      : const ['Comida', 'Bebidas', 'Postres', 'Snacks', 'Accesorios', 'Otros'];
+
+  EntrepreneurViewModel() {
+    if (!categories.contains(category)) category = categories.first;
+  }
 
   void setBusinessName(String v) {
     businessName = v;
@@ -58,43 +59,43 @@ class EntrepreneurViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  String? error;
+
+  /// "Quiero vender": crea la tienda (POST /seller/store). Queda pendiente
+  /// hasta que un administrador la apruebe. Devuelve true si se creó.
   Future<bool> submit() async {
-    if (businessName.isEmpty ||
-        ownerName.isEmpty ||
-        phone.isEmpty ||
-        !acceptedTerms) {
+    error = null;
+    if (businessName.trim().length < 3 || phone.trim().isEmpty || !acceptedTerms) {
+      error = 'Completa los campos obligatorios y acepta los términos.';
+      notifyListeners();
+      return false;
+    }
+    if (!RegExp(r'^3\d{9}$').hasMatch(phone.replaceAll(RegExp(r'\D'), ''))) {
+      error = 'Escribe un celular colombiano de 10 dígitos (ej. 3001234567).';
+      notifyListeners();
       return false;
     }
     submitting = true;
     notifyListeners();
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 700));
-
-    // Simulated backend: persist request list in SharedPreferences as JSON strings
     try {
-      final sp = await SharedPreferences.getInstance();
-      final existing =
-          sp.getStringList(_kEntrepreneurRequestsKey) ?? <String>[];
-      final timestamp = DateTime.now().toIso8601String();
-      final record = jsonEncode({
-        'id': 'REQ_$timestamp',
-        'businessName': businessName,
-        'ownerName': ownerName,
+      final store = await sl<ApiClient>().post('/seller/store', data: {
+        'name': businessName.trim(),
         'category': category,
-        'phone': phone,
-        'address': address,
-        'description': description,
-        'acceptedTerms': acceptedTerms,
-        'createdAt': timestamp,
+        'description': description.trim(),
+        'phone': phone.replaceAll(RegExp(r'\D'), ''),
+        if (address.trim().isNotEmpty) 'pickupNotes': address.trim(),
+        'acceptsCash': true,
+        'allowsPickup': true,
       });
-      existing.add(record);
-      await sp.setStringList(_kEntrepreneurRequestsKey, existing);
-    } catch (_) {
-      // ignore storage errors for simulation
+      await sl<AuthCubit>().refreshMe();
+      sl<CatalogCubit>().setMyStore(Map<String, dynamic>.from(store as Map));
+      return true;
+    } on ApiException catch (e) {
+      error = e.message;
+      return false;
+    } finally {
+      submitting = false;
+      notifyListeners();
     }
-
-    submitting = false;
-    notifyListeners();
-    return true;
   }
 }

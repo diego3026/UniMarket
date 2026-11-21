@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:unimarket/presentation/viewmodels/auth/auth_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -24,6 +26,14 @@ class _LoginPageState extends State<LoginPage> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    // Motivo de salida (p. ej. "Tu sesión expiró").
+    final st = context.read<AuthCubit>().state;
+    if (st is Unauthenticated) _error = st.message;
+  }
+
+  @override
   void dispose() {
     _email.dispose();
     _password.dispose();
@@ -37,14 +47,11 @@ class _LoginPageState extends State<LoginPage> {
       _error = null;
     });
     final auth = context.read<AuthCubit>();
-    await auth.login(_email.text.trim(), _password.text);
+    final error = await auth.login(_email.text.trim(), _password.text);
     if (!mounted) return;
     setState(() {
       _loading = false;
-      if (!auth.isAuthenticated()) {
-        _error =
-            'Correo o contraseña incorrectos. Revisa los datos e inténtalo de nuevo.';
-      }
+      _error = error;
     });
     // Si inicia sesión, el router lo lleva a la pantalla de su rol.
   }
@@ -113,7 +120,7 @@ class _LoginPageState extends State<LoginPage> {
                         autofillHints: const [AutofillHints.email],
                         textInputAction: TextInputAction.next,
                         decoration: _dec(
-                          'Correo institucional',
+                          'Correo electrónico',
                           Icons.alternate_email_rounded,
                         ),
                         validator: (v) => (v == null || v.trim().isEmpty)
@@ -207,8 +214,10 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
-                      const _DemoAccess(),
+                      if (kDebugMode) ...[
+                        const SizedBox(height: 20),
+                        const _DemoAccess(),
+                      ],
                     ],
                   ),
                 ),
@@ -221,7 +230,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-/// Accesos rápidos para probar cada rol mientras no hay backend.
+/// Accesos rápidos con las cuentas demo del servidor (solo en modo debug).
 class _DemoAccess extends StatelessWidget {
   const _DemoAccess();
 
@@ -237,7 +246,12 @@ class _DemoAccess extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14),
             shape: const StadiumBorder(),
           ),
-          onPressed: () => context.read<AuthCubit>().loginAs(role),
+          onPressed: () async {
+            final error = await context.read<AuthCubit>().loginAs(role);
+            if (error != null && context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+            }
+          },
           icon: Icon(icon, size: 18),
           label: Text(label),
         );
@@ -259,7 +273,6 @@ class _DemoAccess extends StatelessWidget {
               Icons.storefront_rounded,
               UserRole.entrepreneur,
             ),
-            chip('Admin', Icons.admin_panel_settings_rounded, UserRole.admin),
           ],
         ),
       ],

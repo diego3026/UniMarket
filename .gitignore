@@ -70,3 +70,7 @@ coverage/
 ios/Flutter/Secrets.xcconfig
 *.iml
 .idea/
+
+# Configuración de la API por entorno (contiene la clave de la app)
+config/*.json
+!config/*.example.json

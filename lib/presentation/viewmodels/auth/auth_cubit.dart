@@ -1,72 +1,189 @@
+import 'dart:convert';
+
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:unimarket/domain/entities/user_role.dart';
+
+import '../../../core/network/api_client.dart';
 import 'auth_state.dart';
 
-/// Sesión del usuario (simulada hasta conectar el backend en FastAPI).
+/// Sesión del usuario contra la API.
 ///
-/// Credenciales de prueba:
-/// - Cliente:      1234 / 1234
-/// - Emprendedor:  emp  / emp
-/// - Admin:        admin / admin
-///
-/// La sesión se guarda en SharedPreferences para no tener que iniciar sesión
-/// cada vez que se reinicia la app durante el desarrollo.
+/// - Los tokens se guardan cifrados (TokenStorage).
+/// - Los datos básicos del usuario se guardan en SharedPreferences para abrir
+///   la app sin esperar a la red; luego se actualizan con GET /me.
 class AuthCubit extends Cubit<AuthState> {
-  static const _kEmail = 'auth_email';
-  static const _kRole = 'auth_role';
+  static const _kUser = 'auth_user_v2';
 
   final SharedPreferences _prefs;
+  final ApiClient _api;
 
-  AuthCubit(this._prefs) : super(AuthInitial()) {
-    final email = _prefs.getString(_kEmail);
-    final role = _prefs.getString(_kRole);
-    if (email != null && role != null) {
-      emit(
-        Authenticated(AuthUser(email: email, role: UserRole.fromString(role))),
-      );
-    } else {
-      emit(Unauthenticated());
-    }
+  AuthCubit(this._prefs, this._api) : super(AuthInitial()) {
+    _api.onSessionExpired = () => _signOutLocal('Tu sesión expiró. Inicia sesión de nuevo.');
   }
 
-  Future<void> login(String email, String password) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    final UserRole role;
-    if (email == '1234' && password == '1234') {
-      role = UserRole.consumer;
-    } else if (email == 'emp' && password == 'emp') {
-      role = UserRole.entrepreneur;
-    } else if (email == 'admin' && password == 'admin') {
-      role = UserRole.admin;
-    } else {
+  /// Recupera la sesión guardada al abrir la app.
+  Future<void> restore() async {
+    final raw = _prefs.getString(_kUser);
+    final token = await _api.tokens.refreshToken;
+    if (raw == null || token == null) {
       emit(Unauthenticated());
       return;
     }
-    await _signIn(email, role);
+    try {
+      emit(Authenticated(AuthUser.fromJson(jsonDecode(raw) as Map<String, dynamic>)));
+    } catch (_) {
+      emit(Unauthenticated());
+      return;
+    }
+    // Actualiza en segundo plano (rol o tienda pudieron cambiar).
+    unawaited(refreshMe());
   }
 
-  /// Acceso rápido para pruebas desde la pantalla de login.
-  Future<void> loginAs(UserRole role) {
+  /// Inicia sesión. Devuelve el mensaje de error o null si todo salió bien.
+  Future<String?> login(String email, String password) async {
+    try {
+      final r = await _api.post(
+        '/auth/login',
+        data: {'email': email.trim(), 'password': password},
+        auth: false,
+      );
+      await _saveSession(r as Map<String, dynamic>);
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
+
+  /// Crea la cuenta y deja la sesión iniciada.
+  Future<String?> register({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
+    required bool acceptTerms,
+  }) async {
+    try {
+      final r = await _api.post(
+        '/auth/register',
+        data: {
+          'fullName': name.trim(),
+          'email': email.trim(),
+          'phone': phone,
+          'password': password,
+          'acceptTerms': acceptTerms,
+        },
+        auth: false,
+      );
+      await _saveSession(r as Map<String, dynamic>);
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
+
+  /// Cuentas demo (solo en modo debug, para probar cada rol rápido).
+  Future<String?> loginAs(UserRole role) {
     const emails = {
-      UserRole.consumer: '1234',
-      UserRole.entrepreneur: 'emp',
-      UserRole.admin: 'admin',
+      UserRole.consumer: 'cliente@demo.unimarket.app',
+      UserRole.entrepreneur: 'laura@demo.unimarket.app',
     };
-    return _signIn(emails[role]!, role);
+    final email = emails[role];
+    if (email == null) return Future.value('Para el admin usa tu correo y contraseña');
+    return login(email, 'Demo12345');
   }
 
-  Future<void> _signIn(String email, UserRole role) async {
-    await _prefs.setString(_kEmail, email);
-    await _prefs.setString(_kRole, role.name);
-    emit(Authenticated(AuthUser(email: email, role: role)));
+  Future<void> refreshMe() async {
+    try {
+      final me = await _api.get('/me');
+      final user = AuthUser.fromJson(me as Map<String, dynamic>);
+      await _prefs.setString(_kUser, jsonEncode(user.toJson()));
+      emit(Authenticated(user));
+    } on ApiException catch (e) {
+      if (e.isUnauthorized) await _signOutLocal('Tu sesión expiró. Inicia sesión de nuevo.');
+    }
+  }
+
+  /// Actualiza el usuario guardado (p. ej. tras crear su tienda o editar el perfil).
+  Future<void> setUser(AuthUser user) async {
+    await _prefs.setString(_kUser, jsonEncode(user.toJson()));
+    emit(Authenticated(user));
+  }
+
+  Future<String?> verifyEmail(String code) async {
+    try {
+      await _api.post('/auth/verify-email', data: {'code': code});
+      await refreshMe();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
+
+  Future<String?> resendVerification() async {
+    try {
+      await _api.post('/me/resend-verification');
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
+
+  Future<String?> requestPasswordReset(String email) async {
+    try {
+      await _api.post('/auth/forgot-password', data: {'email': email.trim()}, auth: false);
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
+
+  Future<String?> resetPassword(String email, String code, String newPassword) async {
+    try {
+      await _api.post(
+        '/auth/reset-password',
+        data: {'email': email.trim(), 'code': code, 'newPassword': newPassword},
+        auth: false,
+      );
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
+
+  Future<String?> changePassword(String current, String newPassword) async {
+    try {
+      await _api.post('/me/password', data: {'currentPassword': current, 'newPassword': newPassword});
+      await _signOutLocal('Contraseña actualizada. Inicia sesión de nuevo.');
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
   }
 
   Future<void> logout() async {
-    await _prefs.remove(_kEmail);
-    await _prefs.remove(_kRole);
-    emit(Unauthenticated());
+    final refresh = await _api.tokens.refreshToken;
+    if (refresh != null) {
+      try {
+        await _api.post('/auth/logout', data: {'refreshToken': refresh}, auth: false);
+      } catch (_) {}
+    }
+    await _signOutLocal();
+  }
+
+  Future<void> _saveSession(Map<String, dynamic> r) async {
+    await _api.tokens.save(r['accessToken'] as String, r['refreshToken'] as String);
+    final user = AuthUser.fromJson(r['user'] as Map<String, dynamic>);
+    await _prefs.setString(_kUser, jsonEncode(user.toJson()));
+    emit(Authenticated(user));
+  }
+
+  Future<void> _signOutLocal([String? message]) async {
+    await _api.tokens.clear();
+    _api.clearCache();
+    await _prefs.remove(_kUser);
+    if (state is! Unauthenticated) emit(Unauthenticated(message));
   }
 
   bool isAuthenticated() => state is Authenticated;

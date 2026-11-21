@@ -41,7 +41,7 @@ class AdminUserUpdated extends AdminUsersState {
 }
 
 class AdminUserDeleted extends AdminUsersState {
-  final int userId;
+  final String userId;
 
   const AdminUserDeleted(this.userId);
 
@@ -60,7 +60,7 @@ class AdminUsersError extends AdminUsersState {
 
 /// Modelo de usuario para administración
 class AdminUserModel extends Equatable {
-  final int id;
+  final String id;
   final String name;
   final String email;
   final String role; // 'Consumidor', 'Emprendedor', 'Administrador'
@@ -84,8 +84,22 @@ class AdminUserModel extends Equatable {
 
   bool get isActive => status == 'Activo';
 
+  static const roleLabels = {'consumer': 'Consumidor', 'entrepreneur': 'Emprendedor', 'admin': 'Administrador'};
+
+  factory AdminUserModel.fromJson(Map<String, dynamic> j) => AdminUserModel(
+    id: j['id'].toString(),
+    name: (j['fullName'] ?? '').toString(),
+    email: (j['email'] ?? '').toString(),
+    role: roleLabels[j['role']] ?? j['role'].toString(),
+    status: j['status'] == 'suspended' ? 'Suspendido' : 'Activo',
+    joinDate: DateTime.tryParse((j['createdAt'] ?? '').toString())?.toLocal() ?? DateTime.now(),
+    lastActiveDate: DateTime.tryParse((j['lastLoginAt'] ?? '').toString())?.toLocal(),
+    totalOrders: (j['totalOrders'] as num?)?.toInt() ?? 0,
+    totalSpent: (j['totalSpent'] as num?)?.toDouble() ?? 0,
+  );
+
   AdminUserModel copyWith({
-    int? id,
+    String? id,
     String? name,
     String? email,
     String? role,

@@ -45,7 +45,7 @@ class AddressUpdated extends AddressesState {
 }
 
 class AddressDeleted extends AddressesState {
-  final int addressId;
+  final String addressId;
 
   const AddressDeleted(this.addressId);
 
@@ -64,7 +64,7 @@ class AddressError extends AddressesState {
 
 /// Modelo de dirección
 class AddressModel extends Equatable {
-  final int id;
+  final String id;
   final String label;
   final String address;
   final String city;
@@ -72,6 +72,8 @@ class AddressModel extends Equatable {
   final String? postalCode;
   final bool isDefault;
   final DateTime createdAt;
+  final double? latitude;
+  final double? longitude;
 
   const AddressModel({
     required this.id,
@@ -82,10 +84,25 @@ class AddressModel extends Equatable {
     this.postalCode,
     required this.isDefault,
     required this.createdAt,
+    this.latitude,
+    this.longitude,
   });
 
+  factory AddressModel.fromJson(Map<String, dynamic> j) => AddressModel(
+    id: j['id'].toString(),
+    label: (j['label'] ?? '').toString(),
+    address: (j['address'] ?? '').toString(),
+    city: (j['city'] ?? '').toString(),
+    country: 'Colombia',
+    postalCode: (j['details'] ?? '').toString(),
+    isDefault: j['isDefault'] == true,
+    createdAt: DateTime.now(),
+    latitude: (j['latitude'] as num?)?.toDouble(),
+    longitude: (j['longitude'] as num?)?.toDouble(),
+  );
+
   AddressModel copyWith({
-    int? id,
+    String? id,
     String? label,
     String? address,
     String? city,

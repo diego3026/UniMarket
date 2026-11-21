@@ -352,7 +352,7 @@ class AddressesManagementPage extends StatelessWidget {
     );
   }
 
-  void _confirmDeleteAddress(BuildContext context, int id) {
+  void _confirmDeleteAddress(BuildContext context, String id) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(

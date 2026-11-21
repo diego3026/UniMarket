@@ -1,4 +1,7 @@
+import 'package:unimarket/presentation/viewmodels/catalog/catalog_cubit.dart';
 import 'package:flutter/material.dart';
+import 'package:unimarket/core/network/api_client.dart';
+import 'package:unimarket/presentation/viewmodels/product/product_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,13 +9,10 @@ import '../../../constants/app_colors.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../data/datasources/mock/market_mock_data.dart';
 import '../../../domain/entities/market_entities.dart';
 import '../../models/cart_item.dart';
 import '../../viewmodels/cart/cart_cubit.dart';
 import '../../viewmodels/market/market_cubits.dart';
-import '../../viewmodels/profile/profile_cubit.dart';
-import '../../viewmodels/profile/profile_state.dart';
 import '../../widgets/ui/app_widgets.dart';
 import '../../widgets/ui/campus_map.dart';
 import '../../widgets/ui/payment_widgets.dart';
@@ -46,6 +46,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
   PaymentChoice? _payment;
   bool _showMap = false;
   bool _paying = false;
+  bool _checkingCoupon = false;
+
+  /// Si la red falla y se vuelve a tocar "Pagar", el servidor no duplica el pedido.
+  final String _idempotencyKey = MarketOrdersCubit.newIdempotencyKey();
 
   @override
   void initState() {
@@ -55,11 +59,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
         ? FulfillmentMode.delivery
         : FulfillmentMode.pickup;
     final card = context.read<WalletCubit>().state.defaultCard;
-    _payment = s.acceptsNequi
+    _payment = s.acceptsBreb
+        ? const PaymentChoice.breb()
+        : s.acceptsNequi
         ? const PaymentChoice.nequi()
         : s.acceptsCash
         ? const PaymentChoice.cash()
         : (s.acceptsCard && card != null ? PaymentChoice.card(card) : null);
+    final places = Catalog.places;
+    if (places.isNotEmpty && !places.any((p) => p.id == _deliveryPlaceId)) {
+      _deliveryPlaceId = places.first.id;
+    }
   }
 
   @override
@@ -73,14 +83,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
       ? state.items.where((i) => i.product.storeId == widget.storeId).toList()
       : <CartItem>[];
 
-  void _applyCoupon(double subtotal) {
-    final r = context.read<PromotionsCubit>().validateCoupon(
+  Future<void> _applyCoupon(double subtotal) async {
+    FocusScope.of(context).unfocus();
+    setState(() => _checkingCoupon = true);
+    final r = await context.read<PromotionsCubit>().validateCoupon(
       _coupon.text,
       widget.storeId,
       subtotal,
     );
-    setState(() => _couponResult = r);
-    FocusScope.of(context).unfocus();
+    if (!mounted) return;
+    setState(() {
+      _couponResult = r;
+      _checkingCoupon = false;
+    });
   }
 
   Future<void> _pay({
@@ -96,26 +111,31 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return;
     }
     setState(() => _paying = true);
-    await Future.delayed(const Duration(milliseconds: 1200));
-    if (!mounted) return;
-    final profile = context.read<ProfileCubit>().state;
-    final order = context.read<MarketOrdersCubit>().place(
-      storeId: widget.storeId,
-      storeName: widget.storeName,
-      customerName: profile is ProfileLoaded ? profile.user.name : 'Cliente',
-      items: items,
-      mode: _mode,
-      placeId: _mode == FulfillmentMode.pickup
-          ? settings.pickupPlaceId
-          : _deliveryPlaceId,
-      notes: _notes.text.trim(),
-      deliveryFee: deliveryFee,
-      coupon: _couponResult?.promotion,
-      couponDiscount: couponDiscount,
-      paymentLabel: _payment!.label(_mode),
-    );
-    context.read<CartCubit>().removeStore(widget.storeId);
-    context.pushReplacement(AppRoutes.orderSuccessPath(order.id));
+    try {
+      final order = await context.read<MarketOrdersCubit>().place(
+        storeId: widget.storeId,
+        items: items,
+        mode: _mode,
+        placeId: _mode == FulfillmentMode.pickup
+            ? settings.pickupPlaceId
+            : _deliveryPlaceId,
+        notes: _notes.text.trim(),
+        coupon: _couponResult?.promotion,
+        payment: _payment!,
+        idempotencyKey: _idempotencyKey,
+      );
+      if (!mounted) return;
+      context.read<CartCubit>().removeStore(widget.storeId);
+      context.pushReplacement(AppRoutes.orderSuccessPath(order.id));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _paying = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      // Si cambió el precio o el stock, se actualiza el catálogo para mostrar lo real.
+      if (e.code == 'out_of_stock' || e.code == 'product_unavailable') {
+        context.read<ProductCubit>().loadProducts();
+      }
+    }
   }
 
   @override
@@ -147,21 +167,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
           0,
           (s, i) => s + (i.product.price - i.product.finalPrice) * i.quantity,
         );
-        // El cupón se revalida si cambian las cantidades.
-        final coupon = _couponResult?.promotion != null
-            ? context.read<PromotionsCubit>().validateCoupon(
-                _couponResult!.promotion!.code,
-                widget.storeId,
-                subtotal,
-              )
-            : _couponResult;
+        // Si cambian las cantidades, el cupón se recalcula (el servidor confirma al pagar).
+        final promo = _couponResult?.promotion;
+        final CouponResult? coupon = promo == null
+            ? _couponResult
+            : subtotal < promo.minPurchase
+            ? CouponResult(error: 'Compra mínima de ${formatCop(promo.minPurchase)} para este cupón')
+            : CouponResult(promotion: promo, discount: promo.couponDiscount(subtotal));
         final couponDiscount = coupon?.discount ?? 0;
         final deliveryFee = _mode == FulfillmentMode.delivery
             ? settings.deliveryFee
             : 0.0;
         final total = subtotal - couponDiscount + deliveryFee;
-        final pickupPlace = MarketMockData.place(settings.pickupPlaceId);
-        final deliveryPlace = MarketMockData.place(_deliveryPlaceId);
+        final pickupPlace = Catalog.place(settings.pickupPlaceId);
+        final deliveryPlace = Catalog.place(_deliveryPlaceId);
 
         return Scaffold(
           appBar: AppBar(
@@ -436,8 +455,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             style: FilledButton.styleFrom(
                               minimumSize: const Size(0, 54),
                             ),
-                            onPressed: () => _applyCoupon(subtotal),
-                            child: const Text('Aplicar'),
+                            onPressed: _checkingCoupon ? null : () => _applyCoupon(subtotal),
+                            child: _checkingCoupon
+                                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Text('Aplicar'),
                           ),
                         ],
                       ),
@@ -484,6 +505,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   leading: _RoundIcon(switch (_payment?.kind) {
                     PaymentKind.cash => Icons.payments_rounded,
                     PaymentKind.nequi => Icons.phone_iphone_rounded,
+                    PaymentKind.breb => Icons.bolt_rounded,
                     PaymentKind.card => Icons.credit_card_rounded,
                     null => Icons.wallet_rounded,
                   }),
@@ -492,8 +514,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ),
                   subtitle: Text(
                     [
-                      if (settings.acceptsCash) 'Efectivo',
+                      if (settings.acceptsBreb) 'Bre-B',
                       if (settings.acceptsNequi) 'Nequi',
+                      if (settings.acceptsCash) 'Efectivo',
                       if (settings.acceptsCard) 'Tarjeta',
                     ].join(' · '),
                   ),
@@ -572,14 +595,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           ),
                         ),
                         SizedBox(width: 12),
-                        Text('Procesando pago…'),
+                        Text('Enviando pedido…'),
                       ],
                     )
-                  : Text(
-                      _payment?.kind == PaymentKind.cash
-                          ? 'Confirmar pedido · ${formatCop(total)}'
-                          : 'Pagar ${formatCop(total)}',
-                    ),
+                  : Text('Confirmar pedido · ${formatCop(total)}'),
             ),
           ),
         );

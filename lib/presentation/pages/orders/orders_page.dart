@@ -45,41 +45,45 @@ class _OrdersPageState extends State<OrdersPage> {
       appBar: context.canPop() ? AppBar() : null,
       body: SafeArea(
         bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: 24),
-          children: [
-            PageTitle(
-              title: 'Mis pedidos',
-              subtitle: active > 0 ? '$active en curso' : null,
-            ),
-            ChoiceChipsRow(
-              options: _tabs,
-              selected: _tab,
-              onSelected: (t) => setState(() => _tab = t),
-            ),
-            const SizedBox(height: 16),
-            if (orders.isEmpty)
-              EmptyState(
-                icon: Icons.receipt_long_outlined,
-                title: 'Nada por aquí',
-                message: _tab == 'En curso'
-                    ? 'Cuando hagas un pedido podrás seguirlo desde aquí.'
-                    : 'No tienes pedidos en esta sección.',
-                actionLabel: _tab == 'En curso' ? 'Hacer un pedido' : null,
-                onAction: () => context.go(AppRoutes.home),
-              )
-            else
-              for (final o in orders)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppTheme.pagePadding,
-                    0,
-                    AppTheme.pagePadding,
-                    12,
+        child: RefreshIndicator(
+          onRefresh: () => context.read<MarketOrdersCubit>().loadMine(),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 24),
+            children: [
+              PageTitle(
+                title: 'Mis pedidos',
+                subtitle: active > 0 ? '$active en curso' : null,
+              ),
+              ChoiceChipsRow(
+                options: _tabs,
+                selected: _tab,
+                onSelected: (t) => setState(() => _tab = t),
+              ),
+              const SizedBox(height: 16),
+              if (orders.isEmpty)
+                EmptyState(
+                  icon: Icons.receipt_long_outlined,
+                  title: 'Nada por aquí',
+                  message: _tab == 'En curso'
+                      ? 'Cuando hagas un pedido podrás seguirlo desde aquí.'
+                      : 'No tienes pedidos en esta sección.',
+                  actionLabel: _tab == 'En curso' ? 'Hacer un pedido' : null,
+                  onAction: () => context.go(AppRoutes.home),
+                )
+              else
+                for (final o in orders)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppTheme.pagePadding,
+                      0,
+                      AppTheme.pagePadding,
+                      12,
+                    ),
+                    child: _OrderCard(order: o),
                   ),
-                  child: _OrderCard(order: o),
-                ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -1,7 +1,7 @@
+import 'package:unimarket/presentation/viewmodels/catalog/catalog_cubit.dart';
 import 'package:flutter/material.dart';
 
 import '../../../constants/app_colors.dart';
-import '../../../data/datasources/mock/market_mock_data.dart';
 import '../../../domain/entities/market_entities.dart';
 
 /// Pin sobre el mapa del campus.
@@ -50,9 +50,9 @@ class CampusMap extends StatelessWidget {
   });
 
   static List<Offset> routePoints(String from, String to) {
-    final a = MarketMockData.place(from).position;
-    final b = MarketMockData.place(to).position;
-    final plaza = MarketMockData.place('plaza').position;
+    final a = Catalog.place(from).position;
+    final b = Catalog.place(to).position;
+    final plaza = Catalog.place('plaza').position;
     // Los caminos del campus pasan por la plazoleta central.
     if (from == 'plaza' || to == 'plaza') return [a, b];
     return [a, Offset(a.dx, plaza.dy), Offset(b.dx, plaza.dy), b];
@@ -103,7 +103,7 @@ class CampusMap extends StatelessWidget {
                 ),
                 // Lugares tocables (modo selector)
                 if (onPlaceTap != null)
-                  for (final p in MarketMockData.places)
+                  for (final p in Catalog.places)
                     Positioned(
                       left: px(p.position).dx - 44,
                       top: px(p.position).dy - 22,
@@ -119,7 +119,7 @@ class CampusMap extends StatelessWidget {
                     ),
                 for (final pin in pins)
                   _positionedPin(
-                    px(MarketMockData.place(pin.placeId).position),
+                    px(Catalog.place(pin.placeId).position),
                     pin,
                   ),
                 if (route != null && courierProgress != null)
@@ -243,10 +243,10 @@ class _CampusPainter extends CustomPainter {
       ..strokeWidth = 12
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
-    final plaza = px(MarketMockData.place('plaza').position);
+    final plaza = px(Catalog.place('plaza').position);
     canvas.drawLine(Offset(0, plaza.dy), Offset(size.width, plaza.dy), road);
     canvas.drawLine(Offset(plaza.dx, 0), Offset(plaza.dx, size.height), road);
-    for (final p in MarketMockData.places) {
+    for (final p in Catalog.places) {
       final o = px(p.position);
       canvas.drawLine(o, Offset(o.dx, plaza.dy), road..strokeWidth = 7);
     }
@@ -255,7 +255,7 @@ class _CampusPainter extends CustomPainter {
     // Edificios
     final building = Paint()..color = const Color(0xFFE3DEEF);
     final buildingSel = Paint()..color = routeColor.withValues(alpha: 0.25);
-    for (final p in MarketMockData.places) {
+    for (final p in Catalog.places) {
       if (p.id == 'plaza') continue;
       final o = px(p.position);
       final rect = RRect.fromRectAndRadius(
@@ -366,7 +366,7 @@ Future<CampusPlace?> showCampusPlacePicker(
                   child: ListView(
                     shrinkWrap: true,
                     children: [
-                      for (final p in MarketMockData.places)
+                      for (final p in Catalog.places)
                         ListTile(
                           onTap: () => setState(() => sel = p.id),
                           leading: Icon(
@@ -389,7 +389,7 @@ Future<CampusPlace?> showCampusPlacePicker(
                 FilledButton(
                   onPressed: sel == null
                       ? null
-                      : () => Navigator.pop(ctx, MarketMockData.place(sel!)),
+                      : () => Navigator.pop(ctx, Catalog.place(sel!)),
                   child: const Text('Confirmar ubicación'),
                 ),
               ],
