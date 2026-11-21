@@ -2,6 +2,7 @@ import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:unimarket/core/injection_container.dart';
+import 'package:unimarket/core/network/media_uploader.dart';
 import 'package:unimarket/presentation/viewmodels/entrepreneur/documents_cubit.dart';
 import 'package:unimarket/presentation/viewmodels/entrepreneur/documents_state.dart';
 import 'package:unimarket/core/utils/notification_helper.dart';
@@ -30,13 +31,12 @@ class DocumentsPage extends StatelessWidget {
             } else if (state is DocumentUploaded) {
               NotificationHelper.showSuccess(
                 context: context,
-                message: 'Documento cargado exitosamente',
+                message: 'Documento enviado a revisión',
               );
-              context.read<DocumentsCubit>().loadDocuments();
             }
           },
           builder: (context, state) {
-            if (state is DocumentsLoading) {
+            if (state is DocumentsLoading || state is DocumentUploading) {
               return const Center(child: CircularProgressIndicator());
             }
 
@@ -112,7 +112,13 @@ class DocumentsPage extends StatelessWidget {
             }
 
             if (state is DocumentsError) {
-              return Center(child: Text('Error: ${state.message}'));
+              return Center(
+                child: TextButton.icon(
+                  onPressed: () => context.read<DocumentsCubit>().loadDocuments(),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Reintentar'),
+                ),
+              );
             }
 
             return const SizedBox.shrink();
@@ -132,6 +138,9 @@ class DocumentsPage extends StatelessWidget {
     } else if (document.isRejected) {
       statusColor = AppColors.danger;
       statusIcon = Icons.error;
+    } else if (document.isMissing) {
+      statusColor = AppColors.textSecondary;
+      statusIcon = Icons.upload_file;
     } else {
       statusColor = AppColors.warning;
       statusIcon = Icons.schedule;
@@ -222,7 +231,7 @@ class DocumentsPage extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _showViewDocumentDialog(context, document),
+                  onPressed: document.isMissing ? null : () => _showViewDocumentDialog(context, document),
                   icon: const Icon(Icons.visibility, size: 16),
                   label: const Text('Ver'),
                   style: OutlinedButton.styleFrom(
@@ -235,7 +244,7 @@ class DocumentsPage extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () => _showUploadDocumentDialog(context, document),
                   icon: const Icon(Icons.upload_file, size: 16),
-                  label: const Text('Cargar'),
+                  label: Text(document.isMissing ? 'Cargar' : 'Reemplazar'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.seller,
                   ),
@@ -263,7 +272,7 @@ class DocumentsPage extends StatelessWidget {
                 color: AppColors.border,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: document.fileUrl != null
+              child: document.fileUrl != null && !document.fileUrl!.contains('/private/')
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: Image.network(
@@ -331,7 +340,7 @@ class DocumentsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Selecciona o arrastra tu archivo aquí',
+                    'Elige una foto o PDF legible del documento',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: AppColors.textSecondary),
                   ),
@@ -353,14 +362,14 @@ class DocumentsPage extends StatelessWidget {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.seller),
-            onPressed: () {
-              context.read<DocumentsCubit>().uploadDocument(
-                documentName: document.name,
-                filePath: 'mock_file_path',
-              );
+            onPressed: () async {
+              final cubit = context.read<DocumentsCubit>();
               Navigator.pop(dialogContext);
+              final file = await MediaUploader.pick(document: true);
+              if (file == null) return;
+              await cubit.uploadDocument(documentName: document.name, file: file);
             },
-            child: const Text('Cargar'),
+            child: const Text('Elegir archivo'),
           ),
         ],
       ),

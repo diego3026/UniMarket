@@ -1,24 +1,33 @@
 // lib/data/datasources/product_remote_data_source.dart
-import '../models/product_model.dart';
-import 'mock/catalog_mock_data.dart';
+import '../../core/network/api_client.dart';
+import '../../domain/entities/product_entity.dart';
+import '../api/mappers.dart';
 
 abstract class ProductRemoteDataSource {
-  Future<List<ProductModel>> getProducts();
-  Future<ProductModel> getProductById(String id);
+  Future<List<ProductEntity>> getProducts();
+  Future<ProductEntity> getProductById(String id);
 }
 
-/// Por ahora devuelve datos de ejemplo. Cuando el backend en FastAPI esté
-/// listo, aquí se hará la llamada con Dio a `GET /api/v1/products`.
+/// Catálogo desde `GET /api/v1/products`. `discountPrice` ya viene calculado por el servidor.
 class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
+  final ApiClient _api;
+  ProductRemoteDataSourceImpl(this._api);
+
+  /// Trae hasta 500 productos (5 páginas). Suficiente para el catálogo del campus;
+  /// la búsqueda del servidor cubre el resto.
   @override
-  Future<List<ProductModel>> getProducts() async {
-    await Future.delayed(const Duration(milliseconds: 600));
-    return CatalogMockData.products();
+  Future<List<ProductEntity>> getProducts() async {
+    final all = <ProductEntity>[];
+    for (var page = 1; page <= 5; page++) {
+      final r = await _api.getCached('/products', query: {'page': page, 'size': 100}) as Json;
+      final items = r['items'] as List;
+      all.addAll([for (final p in items) productFrom(p as Json)]);
+      if (all.length >= (r['total'] as num) || items.isEmpty) break;
+    }
+    return all;
   }
 
   @override
-  Future<ProductModel> getProductById(String id) async {
-    final products = await getProducts();
-    return products.firstWhere((product) => product.id == id);
-  }
+  Future<ProductEntity> getProductById(String id) async =>
+      productFrom(await _api.getCached('/products/$id') as Json);
 }

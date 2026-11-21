@@ -1,72 +1,52 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:unimarket/core/injection_container.dart';
 import 'package:unimarket/domain/entities/user_role.dart';
+
+import '../../../core/network/api_client.dart';
 import '../../models/user_model.dart';
 import '../auth/auth_cubit.dart';
+import '../auth/auth_state.dart';
 import 'profile_state.dart';
 
+/// Perfil del usuario: se arma con los datos de la sesión y se edita con PATCH /me.
 class ProfileCubit extends Cubit<ProfileState> {
-  ProfileCubit() : super(ProfileInitial());
+  final ApiClient _api;
+  ProfileCubit(this._api) : super(ProfileInitial());
+
+  UserModel _from(AuthUser u) => UserModel(
+    id: u.id,
+    name: u.name.isEmpty ? u.firstName : u.name,
+    email: u.email,
+    avatarUrl: u.avatarUrl.isEmpty ? null : u.avatarUrl,
+    role: u.role,
+  );
 
   Future<void> loadProfile() async {
-    emit(ProfileLoading());
+    final user = sl<AuthCubit>().currentUser;
+    if (user == null) {
+      emit(ProfileFailure('Usuario no autenticado'));
+      return;
+    }
+    emit(ProfileLoaded(_from(user)));
+  }
+
+  /// Guarda nombre, teléfono o foto. Devuelve el error o null.
+  Future<String?> updateProfile({String? name, String? email, String? avatarUrl, String? phone, UserRole? role}) async {
     try {
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      // Get the authenticated user from AuthCubit
-      final authCubit = sl<AuthCubit>();
-      final authUser = authCubit.currentUser;
-
-      if (authUser == null) {
-        emit(ProfileFailure('Usuario no autenticado'));
-        return;
-      }
-
-      // Create user profile with actual role from authenticated user
-      final user = UserModel(
-        id: 'USR${authUser.email}',
-        name: _getNameForRole(authUser.email, authUser.role),
-        email: authUser.email.contains('@')
-            ? authUser.email
-            : '${authUser.email}@unimagdalena.edu.co',
-        avatarUrl: null,
-        role: authUser.role,
+      final r = await _api.patch(
+        '/me',
+        data: {
+          if (name != null && name.trim().isNotEmpty) 'fullName': name.trim(),
+          if (phone != null && phone.trim().isNotEmpty) 'phone': phone,
+          if (avatarUrl != null && avatarUrl.isNotEmpty) 'avatarUrl': avatarUrl,
+        },
       );
-      emit(ProfileLoaded(user));
-    } catch (e) {
-      emit(ProfileFailure('No se pudo cargar el perfil'));
-    }
-  }
-
-  /// Nombre de ejemplo según el rol (modo demo, sin backend).
-  String _getNameForRole(String email, UserRole role) {
-    switch (role) {
-      case UserRole.admin:
-        return 'Administrador UniMarket';
-      case UserRole.entrepreneur:
-        return 'Laura Díaz';
-      case UserRole.consumer:
-        return 'Ashly Peralta';
-    }
-  }
-
-  void updateProfile({
-    String? name,
-    String? email,
-    String? avatarUrl,
-    UserRole? role,
-  }) {
-    final current = state;
-    if (current is ProfileLoaded) {
-      final user = current.user;
-      final updated = UserModel(
-        id: user.id,
-        name: name ?? user.name,
-        email: email ?? user.email,
-        avatarUrl: avatarUrl ?? user.avatarUrl,
-        role: role ?? user.role,
-      );
-      emit(ProfileLoaded(updated));
+      final user = AuthUser.fromJson(r as Map<String, dynamic>);
+      await sl<AuthCubit>().setUser(user);
+      emit(ProfileLoaded(_from(user)));
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
     }
   }
 }

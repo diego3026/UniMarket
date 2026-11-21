@@ -1,3 +1,4 @@
+import 'package:unimarket/presentation/viewmodels/catalog/catalog_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -5,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../../constants/app_colors.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../data/datasources/mock/catalog_mock_data.dart';
 import '../../../domain/entities/market_entities.dart';
 import '../../viewmodels/market/market_cubits.dart';
 import '../../viewmodels/notifications/notifications_cubit.dart';
@@ -37,6 +37,7 @@ class _ConsumerHomePageState extends State<ConsumerHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<CatalogCubit>(); // se reconstruye cuando llegan los datos de la API
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -63,7 +64,7 @@ class _ConsumerHomePageState extends State<ConsumerHomePage> {
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
               SliverToBoxAdapter(
                 child: ChoiceChipsRow(
-                  options: const ['Todo', ...CatalogMockData.categories],
+                  options: ['Todo', ...Catalog.categories],
                   selected: _category,
                   onSelected: (c) => setState(() => _category = c),
                 ),
@@ -108,7 +109,7 @@ class _ConsumerHomePageState extends State<ConsumerHomePage> {
     final banners = [
       for (final (i, p) in promos.take(3).indexed)
         () {
-          final store = CatalogMockData.storeById(p.storeId);
+          final store = Catalog.storeById(p.storeId);
           final isCoupon = p.kind == PromotionKind.coupon;
           return PromoBanner(
             title: isCoupon ? 'Cupón ${p.code}' : '${p.valueLabel} ${p.title}',
@@ -159,7 +160,7 @@ class _ConsumerHomePageState extends State<ConsumerHomePage> {
   }
 
   Widget _stores() {
-    final stores = CatalogMockData.stores
+    final stores = Catalog.stores
         .where((s) => _category == 'Todo' || s.category == _category)
         .toList();
     if (stores.isEmpty) {

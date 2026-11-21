@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:flutter/services.dart';
+import 'package:unimarket/presentation/viewmodels/catalog/catalog_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -7,7 +11,6 @@ import '../../../constants/app_colors.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../data/datasources/mock/market_mock_data.dart';
 import '../../../domain/entities/market_entities.dart';
 import '../../viewmodels/market/market_cubits.dart';
 import '../../widgets/ui/app_widgets.dart';
@@ -37,10 +40,126 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
     duration: const Duration(seconds: 9),
   )..repeat();
 
+  Timer? _poll;
+  bool _fetched = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+    // Mientras el pedido siga activo, se actualiza cada 10 s.
+    _poll = Timer.periodic(const Duration(seconds: 10), (_) {
+      final o = context.read<MarketOrdersCubit>().byId(widget.orderId);
+      if (o == null || o.status.isActive) _refresh();
+    });
+  }
+
+  Future<void> _refresh() async {
+    await context.read<MarketOrdersCubit>().fetch(widget.orderId);
+    if (mounted && !_fetched) setState(() => _fetched = true);
+  }
+
   @override
   void dispose() {
+    _poll?.cancel();
     _courier.dispose();
     super.dispose();
+  }
+
+  void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+
+  Future<void> _reportPayment(MarketOrder o) async {
+    final c = TextEditingController();
+    final ref = await showDialog<String>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('¿Ya hiciste la transferencia?'),
+        content: TextField(
+          controller: c,
+          autofocus: true,
+          maxLength: 40,
+          decoration: const InputDecoration(
+            labelText: 'Número de comprobante (opcional)',
+            hintText: 'Ej. M123456',
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d), child: const Text('Todavía no')),
+          FilledButton(onPressed: () => Navigator.pop(d, c.text.trim()), child: const Text('Avisar a la tienda')),
+        ],
+      ),
+    );
+    if (ref == null || !mounted) return;
+    final err = await context.read<MarketOrdersCubit>().reportPayment(o.id, ref);
+    if (mounted) _snack(err ?? 'Le avisamos a ${o.storeName}. Confirmará cuando vea el pago.');
+  }
+
+  Widget _payCard(TextTheme t, MarketOrder o) {
+    final p = o.payTo;
+    final reported = o.paymentStatus == PaymentStatus.reported;
+    final failed = o.paymentStatus == PaymentStatus.failed;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: SurfaceCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  reported ? Icons.hourglass_top_rounded : Icons.bolt_rounded,
+                  color: failed ? AppColors.danger : AppColors.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    reported
+                        ? 'Pago reportado · esperando confirmación'
+                        : failed
+                        ? 'La tienda no ha recibido tu pago'
+                        : 'Paga por ${o.paymentKind == PaymentKind.nequi ? 'Nequi' : 'Bre-B'}',
+                    style: t.titleSmall,
+                  ),
+                ),
+              ],
+            ),
+            if (p != null && !reported) ...[
+              const SizedBox(height: 10),
+              Text(
+                o.paymentKind == PaymentKind.nequi ? 'Envía a este Nequi' : 'Envía a esta llave',
+                style: t.bodySmall,
+              ),
+              Row(
+                children: [
+                  Expanded(child: SelectableText(p.key, style: t.titleMedium)),
+                  IconButton(
+                    tooltip: 'Copiar',
+                    icon: const Icon(Icons.copy_rounded, size: 20),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: p.key));
+                      _snack('Copiado');
+                    },
+                  ),
+                ],
+              ),
+              if (p.holderName.isNotEmpty) Text('A nombre de ${p.holderName}', style: t.bodySmall),
+              const SizedBox(height: 4),
+              Text('Valor exacto: ${formatCop(p.amount)}', style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+              if (p.referenceHint.isNotEmpty) Text(p.referenceHint, style: t.bodySmall),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => _reportPayment(o),
+                  icon: const Icon(Icons.check_rounded),
+                  label: const Text('Ya pagué'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   (String, String) _headline(MarketOrder o, StoreSettings s) =>
@@ -57,11 +176,11 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
         ),
         OrderStatus.ready => (
           '¡Listo para recoger!',
-          'Muestra tu código en ${MarketMockData.place(s.pickupPlaceId).name}',
+          'Muestra tu código en ${Catalog.place(s.pickupPlaceId).name}',
         ),
         OrderStatus.onTheWay => (
           'Tu pedido va en camino',
-          'Llega en ~8 min a ${MarketMockData.place(o.placeId).name}',
+          'Llega en ~8 min a ${Catalog.place(o.placeId).name}',
         ),
         OrderStatus.delivered => (
           'Pedido entregado',
@@ -114,7 +233,9 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
         ],
       ),
     );
-    if (ok == true && mounted) context.read<MarketOrdersCubit>().cancel(o.id);
+    if (ok != true || !mounted) return;
+    final err = await context.read<MarketOrdersCubit>().cancel(o.id, reason: 'Cancelado por el cliente');
+    if (mounted) _snack(err ?? 'Pedido cancelado');
   }
 
   @override
@@ -123,6 +244,9 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
     return BlocBuilder<MarketOrdersCubit, List<MarketOrder>>(
       builder: (context, _) {
         final o = context.read<MarketOrdersCubit>().byId(widget.orderId);
+        if (o == null && !_fetched) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
         if (o == null) {
           return Scaffold(
             appBar: AppBar(),
@@ -144,18 +268,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
           appBar: AppBar(
             title: Text('Pedido #${o.id}'),
             actions: [
-              if (o.next != null)
-                PopupMenuButton<String>(
-                  tooltip: 'Más opciones',
-                  onSelected: (_) =>
-                      context.read<MarketOrdersCubit>().advance(o.id),
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(
-                      value: 'demo',
-                      child: Text('Simular siguiente estado (demo)'),
-                    ),
-                  ],
-                ),
+              IconButton(tooltip: 'Actualizar', onPressed: _refresh, icon: const Icon(Icons.refresh_rounded)),
             ],
           ),
           body: ListView(
@@ -204,6 +317,12 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
                 ),
               ),
               const SizedBox(height: 14),
+
+              // Pago por transferencia
+              if (o.paymentKind.isTransfer &&
+                  o.status.isActive &&
+                  o.paymentStatus != PaymentStatus.paid)
+                _payCard(t, o),
 
               // Código de recogida
               if (isPickup && o.status.isActive)
@@ -343,8 +462,8 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
                               Text(o.storeName, style: t.titleMedium),
                               Text(
                                 isPickup
-                                    ? '${MarketMockData.place(storePlace).name} · ${s.pickupNotes}'
-                                    : 'Entrega en ${MarketMockData.place(o.placeId).name}${o.notes.isEmpty ? '' : ' · ${o.notes}'}',
+                                    ? '${Catalog.place(storePlace).name} · ${s.pickupNotes}'
+                                    : 'Entrega en ${Catalog.place(o.placeId).name}${o.notes.isEmpty ? '' : ' · ${o.notes}'}',
                                 style: t.bodySmall,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -498,7 +617,6 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
   );
 
   Widget? _actions(BuildContext context, MarketOrder o) {
-    final cubit = context.read<MarketOrdersCubit>();
     switch (o.status) {
       case OrderStatus.pending:
         return BottomActionBar(
@@ -512,19 +630,6 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
             child: const Text('Cancelar pedido'),
           ),
         );
-      case OrderStatus.ready:
-      case OrderStatus.onTheWay:
-        return BottomActionBar(
-          child: FilledButton.icon(
-            onPressed: () => cubit.advance(o.id),
-            icon: const Icon(Icons.check_rounded),
-            label: Text(
-              o.status == OrderStatus.ready
-                  ? 'Ya recogí mi pedido'
-                  : 'Ya recibí mi pedido',
-            ),
-          ),
-        );
       case OrderStatus.delivered:
         if (o.rating != null) return null;
         return BottomActionBar(
@@ -535,6 +640,8 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
           ),
         );
       case OrderStatus.preparing:
+      case OrderStatus.ready:
+      case OrderStatus.onTheWay:
       case OrderStatus.cancelled:
         return null;
     }

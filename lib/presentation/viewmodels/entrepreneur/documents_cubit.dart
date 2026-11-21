@@ -1,94 +1,57 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../core/network/api_client.dart';
+import '../../../core/network/media_uploader.dart';
 import 'documents_state.dart';
 
+/// Documentos de verificación del emprendedor (GET/POST /seller/documents).
+/// Los archivos se suben como privados a Cloudinary; solo el admin los ve.
 class DocumentsCubit extends Cubit<DocumentsState> {
-  DocumentsCubit() : super(const DocumentsInitial());
+  final ApiClient _api;
+  final MediaUploader _uploader;
+  DocumentsCubit(this._api) : _uploader = MediaUploader(_api), super(const DocumentsInitial());
 
-  // Sample data - replace with backend API calls
-  final List<DocumentModel> _documents = [
-    DocumentModel(
-      id: 1,
-      name: 'Cédula de Identidad',
-      status: 'Verificado',
-      fileUrl: 'https://example.com/cedula.pdf',
-      uploadedAt: DateTime.now().subtract(const Duration(days: 20)),
-      verifiedAt: DateTime.now().subtract(const Duration(days: 18)),
-    ),
-    DocumentModel(
-      id: 2,
-      name: 'RUC/NIT',
-      status: 'Pendiente de revisión',
-      fileUrl: 'https://example.com/ruc.pdf',
-      uploadedAt: DateTime.now().subtract(const Duration(days: 15)),
-    ),
-    DocumentModel(
-      id: 3,
-      name: 'Certificado Bancario',
-      status: 'Rechazado',
-      fileUrl: 'https://example.com/certificado.pdf',
-      rejectReason:
-          'Documento no válido o expirado. Por favor, carga nuevamente.',
-      uploadedAt: DateTime.now().subtract(const Duration(days: 25)),
-    ),
-  ];
+  static const required = ['Cédula de ciudadanía', 'Carné estudiantil', 'Certificado bancario'];
 
-  /// Load all documents
-  void loadDocuments() {
-    emit(const DocumentsLoading());
+  List<DocumentModel> _documents = [];
+
+  Future<void> loadDocuments() async {
+    if (_documents.isEmpty) emit(const DocumentsLoading());
     try {
-      // TODO: Replace with actual API call
-      // final documents = await entrepreneurRepository.getDocuments();
-      emit(DocumentsLoaded(_documents));
-    } catch (e) {
-      emit(DocumentsError('Error al cargar documentos: ${e.toString()}'));
-    }
-  }
-
-  /// Upload document
-  void uploadDocument({
-    required String documentName,
-    required String filePath,
-  }) {
-    emit(const DocumentsLoading());
-    try {
-      // TODO: Replace with actual API call and file upload
-      // Simulate file upload progress
-      final existingIndex = _documents.indexWhere(
-        (doc) => doc.name == documentName,
-      );
-
-      if (existingIndex != -1) {
-        _documents[existingIndex] = _documents[existingIndex].copyWith(
-          status: 'Pendiente de revisión',
-          uploadedAt: DateTime.now(),
-          rejectReason: null,
-        );
+      final r = await _api.get('/seller/documents') as List;
+      final all = [for (final d in r) DocumentModel.fromJson(d as Map<String, dynamic>)]
+        ..sort((a, b) => b.uploadedAt.compareTo(a.uploadedAt));
+      final latest = <String, DocumentModel>{};
+      for (final d in all) {
+        latest.putIfAbsent(d.name, () => d);
       }
-
-      emit(DocumentUploaded(_documents[existingIndex]));
-      loadDocuments();
-    } catch (e) {
-      emit(DocumentsError('Error al cargar documento: ${e.toString()}'));
+      _documents = [
+        for (final n in required) latest[n] ?? DocumentModel.missing(n),
+        for (final d in latest.values) if (!required.contains(d.name)) d,
+      ];
+      emit(DocumentsLoaded(_documents));
+    } on ApiException catch (e) {
+      emit(DocumentsError(e.message));
     }
   }
 
-  /// Get document by name
-  DocumentModel? getDocumentByName(String name) {
+  Future<void> uploadDocument({required String documentName, required PlatformFile file}) async {
+    emit(DocumentUploading(documentName: documentName, progress: 0));
     try {
-      return _documents.firstWhere((doc) => doc.name == name);
-    } catch (e) {
-      return null;
+      final url = await _uploader.upload(file, 'document');
+      final r = await _api.post('/seller/documents', data: {'name': documentName, 'fileUrl': url});
+      emit(DocumentUploaded(DocumentModel.fromJson(r as Map<String, dynamic>)));
+    } on ApiException catch (e) {
+      emit(DocumentsError(e.message));
     }
+    await loadDocuments();
   }
 
-  /// Check if all documents are verified
-  bool allDocumentsVerified() {
-    return _documents.every((doc) => doc.isVerified);
-  }
+  bool allDocumentsVerified() => _documents.isNotEmpty && _documents.every((d) => d.isVerified);
 
-  /// Get verification progress
   int getVerificationProgress() {
-    final verified = _documents.where((doc) => doc.isVerified).length;
-    return ((verified / _documents.length) * 100).toInt();
+    if (_documents.isEmpty) return 0;
+    return (_documents.where((d) => d.isVerified).length * 100) ~/ _documents.length;
   }
 }

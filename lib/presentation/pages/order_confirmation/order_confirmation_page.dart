@@ -1,3 +1,4 @@
+import 'package:unimarket/presentation/viewmodels/catalog/catalog_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -5,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../../constants/app_colors.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../data/datasources/mock/market_mock_data.dart';
 import '../../../domain/entities/market_entities.dart';
 import '../../viewmodels/market/market_cubits.dart';
 
@@ -59,8 +59,8 @@ class OrderConfirmationPage extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 pickup
-                    ? '${o.storeName} lo tendrá listo en ~${s.prepMinutes} min en ${MarketMockData.place(s.pickupPlaceId).name}.'
-                    : '${o.storeName} confirmará tu pedido y te lo llevará a ${MarketMockData.place(o.placeId).name}.',
+                    ? '${o.storeName} lo tendrá listo en ~${s.prepMinutes} min en ${Catalog.place(s.pickupPlaceId).name}.'
+                    : '${o.storeName} confirmará tu pedido y te lo llevará a ${Catalog.place(o.placeId).name}.',
                 style: t.bodyLarge?.copyWith(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),

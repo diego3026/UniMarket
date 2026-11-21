@@ -3,10 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:unimarket/core/injection_container.dart' as di;
 import 'package:unimarket/core/theme/app_theme.dart';
 import 'package:unimarket/main.dart';
+
+import 'helpers/fake_session.dart';
 
 const _consumer = [
   '/home', '/promos', '/orders', '/favorites', '/search', '/notifications',
@@ -30,11 +31,7 @@ Future<void> _visitAll(WidgetTester tester, String role, List<String> routes) as
   addTearDown(tester.view.reset);
   addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
-  SharedPreferences.setMockInitialValues({
-    'has_seen_onboarding': true,
-    'auth_email': 'demo',
-    'auth_role': role,
-  });
+  fakeSession(role);
   await di.sl.reset();
   AppTheme.useGoogleFonts = false;
   final prefs = await bootstrap();

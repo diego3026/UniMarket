@@ -55,9 +55,9 @@ class DocumentsError extends DocumentsState {
 
 /// Modelo de documento
 class DocumentModel extends Equatable {
-  final int id;
-  final String name; // 'Cédula', 'RUC', 'Certificado Bancario'
-  final String status; // 'Verificado', 'Pendiente', 'Rechazado'
+  final String id; // vacío si aún no se ha cargado
+  final String name;
+  final String status; // 'Verificado' | 'Pendiente de revisión' | 'Rechazado' | 'Sin cargar'
   final String? fileUrl;
   final String? rejectReason;
   final DateTime uploadedAt;
@@ -73,38 +73,31 @@ class DocumentModel extends Equatable {
     this.verifiedAt,
   });
 
-  bool get isVerified => status == 'Verificado';
-  bool get isPending => status == 'Pendiente de revisión';
-  bool get isRejected => status == 'Rechazado';
+  factory DocumentModel.missing(String name) =>
+      DocumentModel(id: '', name: name, status: 'Sin cargar', uploadedAt: DateTime.now());
 
-  DocumentModel copyWith({
-    int? id,
-    String? name,
-    String? status,
-    String? fileUrl,
-    String? rejectReason,
-    DateTime? uploadedAt,
-    DateTime? verifiedAt,
-  }) {
+  factory DocumentModel.fromJson(Map<String, dynamic> j) {
+    final st = (j['status'] ?? 'pending').toString();
+    final note = (j['reviewNote'] ?? '').toString();
     return DocumentModel(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      status: status ?? this.status,
-      fileUrl: fileUrl ?? this.fileUrl,
-      rejectReason: rejectReason ?? this.rejectReason,
-      uploadedAt: uploadedAt ?? this.uploadedAt,
-      verifiedAt: verifiedAt ?? this.verifiedAt,
+      id: j['id'].toString(),
+      name: (j['name'] ?? '').toString(),
+      status: switch (st) {
+        'approved' => 'Verificado',
+        'rejected' => 'Rechazado',
+        _ => 'Pendiente de revisión',
+      },
+      fileUrl: j['fileUrl']?.toString(),
+      rejectReason: note.isEmpty ? null : note,
+      uploadedAt: DateTime.tryParse((j['createdAt'] ?? '').toString())?.toLocal() ?? DateTime.now(),
     );
   }
 
+  bool get isVerified => status == 'Verificado';
+  bool get isPending => status == 'Pendiente de revisión';
+  bool get isRejected => status == 'Rechazado';
+  bool get isMissing => id.isEmpty;
+
   @override
-  List<Object?> get props => [
-    id,
-    name,
-    status,
-    fileUrl,
-    rejectReason,
-    uploadedAt,
-    verifiedAt,
-  ];
+  List<Object?> get props => [id, name, status, fileUrl, rejectReason, uploadedAt, verifiedAt];
 }

@@ -1,9 +1,9 @@
 import 'package:unimarket/core/utils/formatters.dart';
 import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:unimarket/core/injection_container.dart';
-import 'package:unimarket/core/utils/dialog_helper.dart';
 import 'package:unimarket/presentation/viewmodels/admin/reports_cubit.dart';
 import 'package:unimarket/presentation/viewmodels/admin/reports_state.dart';
 
@@ -51,7 +51,7 @@ class ReportsPage extends StatelessWidget {
                         scrollDirection: Axis.horizontal,
                         children: ['Hoy', 'Esta semana', 'Este mes', 'Este año']
                             .map((period) {
-                              final isSelected = period == 'Hoy';
+                              final isSelected = period == context.read<ReportsCubit>().selectedPeriod;
                               return Padding(
                                 padding: const EdgeInsets.only(right: 8),
                                 child: FilterChip(
@@ -79,7 +79,7 @@ class ReportsPage extends StatelessWidget {
                     _buildMetricsSection(data),
                     const SizedBox(height: 24),
                     // Sales chart placeholder
-                    _buildChartSection(),
+                    _buildChartSection(data),
                     const SizedBox(height: 24),
                     // Top sellers
                     _buildTopSellersSection(data),
@@ -87,95 +87,27 @@ class ReportsPage extends StatelessWidget {
                     // User growth
                     _buildUserGrowthSection(data),
                     const SizedBox(height: 24),
-                    // Export button
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () async {
-                              final confirm =
-                                  await DialogHelper.showConfirmationDialog(
-                                    context: context,
-                                    title: 'Exportar PDF',
-                                    message:
-                                        '¿Deseas descargar los reportes en formato PDF?',
-                                    confirmText: 'Descargar',
-                                    cancelText: 'Cancelar',
-                                    confirmColor: AppColors.danger,
-                                  );
-                              if (confirm && context.mounted) {
-                                DialogHelper.showLoadingDialog(
-                                  context: context,
-                                  message: 'Generando PDF...',
-                                );
-                                context.read<ReportsCubit>().exportReportsPDF();
-
-                                Future.delayed(const Duration(seconds: 2), () {
-                                  if (context.mounted) {
-                                    DialogHelper.dismissLoadingDialog(context);
-                                    DialogHelper.showSuccessDialog(
-                                      context: context,
-                                      title: 'Éxito',
-                                      message:
-                                          'El archivo PDF se ha generado correctamente.',
-                                    );
-                                  }
-                                });
-                              }
-                            },
-                            icon: const Icon(Icons.picture_as_pdf),
-                            label: const Text('PDF'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.danger,
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
+                    // Exportar: CSV copiado al portapapeles (pegar en Excel o Sheets)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final csv = context.read<ReportsCubit>().exportCsv();
+                          if (csv == null) return;
+                          await Clipboard.setData(ClipboardData(text: csv));
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Reporte copiado. Pégalo en Excel o Google Sheets.')),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.table_chart),
+                        label: const Text('Copiar reporte (CSV)'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.success,
+                          foregroundColor: Colors.white,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () async {
-                              final confirm =
-                                  await DialogHelper.showConfirmationDialog(
-                                    context: context,
-                                    title: 'Exportar Excel',
-                                    message:
-                                        '¿Deseas descargar los reportes en formato Excel?',
-                                    confirmText: 'Descargar',
-                                    cancelText: 'Cancelar',
-                                    confirmColor: AppColors.success,
-                                  );
-                              if (confirm && context.mounted) {
-                                DialogHelper.showLoadingDialog(
-                                  context: context,
-                                  message: 'Generando Excel...',
-                                );
-                                context
-                                    .read<ReportsCubit>()
-                                    .exportReportsExcel();
-
-                                Future.delayed(const Duration(seconds: 2), () {
-                                  if (context.mounted) {
-                                    DialogHelper.dismissLoadingDialog(context);
-                                    DialogHelper.showSuccessDialog(
-                                      context: context,
-                                      title: 'Éxito',
-                                      message:
-                                          'El archivo Excel se ha generado correctamente.',
-                                    );
-                                  }
-                                });
-                              }
-                            },
-                            icon: const Icon(Icons.table_chart),
-                            label: const Text('Excel'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.success,
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
@@ -285,7 +217,9 @@ class ReportsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildChartSection() {
+  Widget _buildChartSection(ReportsData data) {
+    final days = data.salesData;
+    final max = days.fold<double>(0, (m, d) => d.amount > m ? d.amount : m);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -297,33 +231,35 @@ class ReportsPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Ventas Diarias',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
+            'Ventas diarias',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 16),
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.bar_chart, size: 40, color: AppColors.textMuted),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Gráfico de ventas',
-                    style: TextStyle(color: AppColors.textSecondary),
+          SizedBox(
+            height: 160,
+            child: days.isEmpty || max == 0
+                ? const Center(
+                    child: Text('Sin ventas en este periodo', style: TextStyle(color: AppColors.textSecondary)),
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      for (final d in days.length > 31 ? days.sublist(days.length - 31) : days)
+                        Expanded(
+                          child: Tooltip(
+                            message: '${d.date.day}/${d.date.month}: ${formatCop(d.amount)} · ${d.orderCount} pedidos',
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                              height: 4 + 150 * d.amount / max,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                ],
-              ),
-            ),
           ),
         ],
       ),
@@ -365,7 +301,7 @@ class ReportsPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Crecimiento de Usuarios',
+            'Usuarios registrados',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
@@ -380,7 +316,7 @@ class ReportsPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '+${data.userGrowth.newUsersThisMonth}',
+                    '${data.userGrowth.newUsersThisMonth}',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -388,7 +324,7 @@ class ReportsPage extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Nuevos usuarios',
+                    '${data.userGrowth.newUsersToday} consumidores · ${data.userGrowth.newUsersThisWeek} emprendedores',
                     style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,

@@ -1,8 +1,11 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../auth/auth_cubit.dart';
 import 'registration_state.dart';
 
 class RegistrationCubit extends Cubit<RegistrationState> {
-  RegistrationCubit() : super(RegistrationInitial());
+  final AuthCubit _auth;
+  RegistrationCubit(this._auth) : super(RegistrationInitial());
 
   Future<void> register({
     required String name,
@@ -13,7 +16,6 @@ class RegistrationCubit extends Cubit<RegistrationState> {
     required bool acceptTerms,
   }) async {
     emit(RegistrationLoading());
-    await Future.delayed(const Duration(seconds: 1));
 
     // Validaciones
     if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
@@ -36,18 +38,16 @@ class RegistrationCubit extends Cubit<RegistrationState> {
       return;
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       emit(
-        RegistrationFailure('La contraseña debe tener al menos 6 caracteres'),
+        RegistrationFailure('La contraseña debe tener al menos 8 caracteres'),
       );
       return;
     }
 
     if (!_isStrongPassword(password)) {
       emit(
-        RegistrationFailure(
-          'La contraseña debe contener letras, números y caracteres especiales',
-        ),
+        RegistrationFailure('La contraseña debe tener letras y números'),
       );
       return;
     }
@@ -62,7 +62,14 @@ class RegistrationCubit extends Cubit<RegistrationState> {
       return;
     }
 
-    emit(RegistrationSuccess());
+    final error = await _auth.register(
+      name: name,
+      email: email,
+      phone: phone.replaceAll(RegExp(r'\D'), ''),
+      password: password,
+      acceptTerms: acceptTerms,
+    );
+    emit(error == null ? RegistrationSuccess() : RegistrationFailure(error));
   }
 
   bool _isValidEmail(String email) {
@@ -73,14 +80,13 @@ class RegistrationCubit extends Cubit<RegistrationState> {
   }
 
   bool _isValidPhone(String phone) {
-    final phoneRegex = RegExp(r'^\d{10}$');
+    final phoneRegex = RegExp(r'^3\d{9}$');
     return phoneRegex.hasMatch(phone.replaceAll(RegExp(r'\D'), ''));
   }
 
   bool _isStrongPassword(String password) {
-    final hasUppercase = password.contains(RegExp(r'[A-Z]'));
-    final hasLowercase = password.contains(RegExp(r'[a-z]'));
+    final hasLetters = password.contains(RegExp(r'[A-Za-z]'));
     final hasDigits = password.contains(RegExp(r'\d'));
-    return hasUppercase && hasLowercase && hasDigits;
+    return hasLetters && hasDigits;
   }
 }

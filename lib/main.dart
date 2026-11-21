@@ -13,9 +13,12 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/viewmodels/auth/auth_cubit.dart';
 import 'presentation/viewmodels/auth/auth_state.dart';
+import 'domain/entities/user_role.dart';
 import 'presentation/viewmodels/cart/cart_cubit.dart';
+import 'presentation/viewmodels/catalog/catalog_cubit.dart';
 import 'presentation/viewmodels/favorites/favorites_cubit.dart';
 import 'presentation/viewmodels/market/market_cubits.dart';
+import 'presentation/viewmodels/market/seller_products_cubit.dart';
 import 'presentation/viewmodels/notifications/notifications_cubit.dart';
 import 'presentation/viewmodels/onboarding/onboarding_cubit.dart';
 import 'presentation/viewmodels/product/product_cubit.dart';
@@ -50,6 +53,8 @@ Future<AppPreferencesController> bootstrap() async {
   final privacySecurity = PrivacySecurityController(preferences);
   await privacySecurity.load();
   di.sl.registerSingleton<PrivacySecurityController>(privacySecurity);
+  // Recupera la sesión guardada (tokens cifrados) antes de mostrar la primera pantalla.
+  await di.sl<AuthCubit>().restore();
   return appPreferences;
 }
 
@@ -66,29 +71,51 @@ class _UniMarketAppState extends State<UniMarketApp> {
 
   late final ProductCubit _productCubit;
 
-  /// Precio de cada producto según las promociones activas de su tienda.
-  void _syncPricing() {
-    final promos = di.sl<PromotionsCubit>();
-    _productCubit.applyPricing((p) {
-      final best = promos.bestFor(p.storeId, p.id, p.price);
-      return best?.apply(p.price);
-    });
-  }
-
   @override
   void initState() {
     super.initState();
     _productCubit = di.sl<ProductCubit>();
-    _syncPricing();
-    _productCubit.loadProducts();
-    di.sl<PromotionsCubit>().stream.listen((_) => _syncPricing());
     _productCubit.stream.listen((s) {
       if (s is ProductLoaded) di.sl<CartCubit>().refreshPrices(s.products);
     });
-    // Sesión restaurada: cargar el perfil desde el inicio.
-    if (di.sl<AuthCubit>().isAuthenticated()) {
-      di.sl<ProfileCubit>().loadProfile();
+    final user = di.sl<AuthCubit>().currentUser;
+    if (user != null) _loadSession(user);
+  }
+
+  /// Carga desde la API todo lo que necesita el usuario según su rol.
+  void _loadSession(AuthUser user) {
+    final sl = di.sl;
+    sl<ProfileCubit>().loadProfile();
+    sl<CatalogCubit>().load();
+    _productCubit.loadProducts();
+    sl<PromotionsCubit>().loadPublic();
+    sl<FavoritesCubit>().loadFavorites();
+    sl<NotificationsCubit>().loadNotifications(user.id, user.role);
+    switch (user.role) {
+      case UserRole.consumer:
+        sl<MarketOrdersCubit>().loadMine();
+        sl<WalletCubit>().load();
+      case UserRole.entrepreneur:
+        sl<CatalogCubit>().loadMyStore();
+        sl<PromotionsCubit>().loadMine();
+        sl<MarketOrdersCubit>().loadStore();
+        sl<SellerProductsCubit>().load();
+      case UserRole.admin:
+        break;
     }
+  }
+
+  /// Al cerrar sesión no queda nada del usuario anterior en memoria.
+  void _clearSession() {
+    final sl = di.sl;
+    sl<CartCubit>().clearCart();
+    sl<CatalogCubit>().clear();
+    sl<PromotionsCubit>().clear();
+    sl<MarketOrdersCubit>().clear();
+    sl<WalletCubit>().clear();
+    sl<SellerProductsCubit>().clear();
+    sl<FavoritesCubit>().clearFavorites();
+    sl<NotificationsCubit>().clear();
   }
 
   @override
@@ -97,25 +124,29 @@ class _UniMarketAppState extends State<UniMarketApp> {
     return MultiBlocProvider(
       providers: [
         BlocProvider.value(value: sl<AuthCubit>()),
+        BlocProvider.value(value: sl<CatalogCubit>()),
         BlocProvider.value(value: _productCubit),
         BlocProvider.value(value: sl<StoreSettingsCubit>()),
         BlocProvider.value(value: sl<PromotionsCubit>()),
         BlocProvider.value(value: sl<MarketOrdersCubit>()),
         BlocProvider.value(value: sl<WalletCubit>()),
+        BlocProvider.value(value: sl<SellerProductsCubit>()),
         BlocProvider.value(value: sl<CartCubit>()..loadCart()),
-        BlocProvider.value(value: sl<FavoritesCubit>()..loadFavorites()),
+        BlocProvider.value(value: sl<FavoritesCubit>()),
         BlocProvider.value(value: sl<ProfileCubit>()),
         BlocProvider.value(value: sl<NotificationsCubit>()),
         BlocProvider(create: (_) => OnboardingCubit(sl<SharedPreferences>())),
       ],
-      // Recarga el perfil cada vez que cambia la sesión.
+      // Carga o limpia los datos cuando entra o sale un usuario.
       child: BlocListener<AuthCubit, AuthState>(
+        listenWhen: (a, b) =>
+            a.runtimeType != b.runtimeType ||
+            (a is Authenticated && b is Authenticated && (a.user.id != b.user.id || a.user.role != b.user.role)),
         listener: (context, state) {
           if (state is Authenticated) {
-            final profile = sl<ProfileCubit>();
-            profile.loadProfile();
+            _loadSession(state.user);
           } else {
-            sl<CartCubit>().clearCart();
+            _clearSession();
           }
         },
         child: AnimatedBuilder(

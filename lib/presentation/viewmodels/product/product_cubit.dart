@@ -1,4 +1,5 @@
 // lib/presentation/viewmodels/product/product_cubit.dart
+// Catálogo de productos. Los precios con descuento ya vienen calculados por la API.
 import 'package:flutter_bloc/flutter_bloc.dart';
 export 'product_state.dart';
 import '../../../domain/usecases/get_products_usecase.dart';
@@ -10,43 +11,23 @@ class ProductCubit extends Cubit<ProductState> {
 
   ProductCubit(this.getProductsUseCase) : super(ProductInitial());
 
-  /// Catálogo sin descuentos y función que calcula el precio con promociones.
-  List<ProductEntity> _base = [];
-  double? Function(ProductEntity product)? _pricing;
-
-  /// Recalcula los precios cuando el emprendedor cambia sus promociones.
-  void applyPricing(double? Function(ProductEntity product) pricing) {
-    _pricing = pricing;
-    if (_base.isNotEmpty) emit(ProductLoaded(_priced()));
-  }
-
-  List<ProductEntity> _priced() {
-    final f = _pricing;
-    if (f == null) return _base;
-    return [
-      for (final p in _base)
-        () {
-          final d = f(p);
-          return p.withDiscount(d != null && d < p.price ? d : null);
-        }(),
-    ];
-  }
-
+  /// Carga el catálogo. Si ya había productos no muestra el cargando (refresco suave).
   Future<void> loadProducts() async {
-    emit(ProductLoading());
+    if (state is! ProductLoaded) emit(ProductLoading());
 
     final result = await getProductsUseCase();
 
-    result.fold((failure) => emit(ProductError(failure.toString())), (
-      products,
-    ) {
-      _base = products;
-      if (products.isEmpty) {
-        emit(ProductEmpty());
-      } else {
-        emit(ProductLoaded(_priced()));
-      }
+    result.fold((failure) => emit(ProductError(failure.message)), (products) {
+      _all = products;
+      emit(products.isEmpty ? ProductEmpty() : ProductLoaded(products));
     });
+  }
+
+  List<ProductEntity> _all = [];
+
+  /// Vuelve a mostrar todo el catálogo después de filtrar o buscar.
+  void resetFilters() {
+    if (_all.isNotEmpty) emit(ProductLoaded(_all));
   }
 
   void filterByCategory(String category) {

@@ -1,156 +1,110 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../core/network/api_client.dart';
 import 'addresses_state.dart';
 
+/// Direcciones guardadas en la cuenta (GET/POST/PUT/DELETE /me/addresses).
 class AddressesCubit extends Cubit<AddressesState> {
-  AddressesCubit() : super(const AddressesInitial());
+  final ApiClient _api;
+  AddressesCubit(this._api) : super(const AddressesInitial());
 
-  // Sample data - replace with backend API calls
-  final List<AddressModel> _addresses = [
-    AddressModel(
-      id: 1,
-      label: 'Casa',
-      address: 'Calle Principal 123, Apartamento 4B',
-      city: 'Bogotá',
-      country: 'Colombia',
-      postalCode: '110221',
-      isDefault: true,
-      createdAt: DateTime.now(),
-    ),
-    AddressModel(
-      id: 2,
-      label: 'Trabajo',
-      address: 'Carrera 7 500, Piso 10',
-      city: 'Bogotá',
-      country: 'Colombia',
-      postalCode: '110222',
-      isDefault: false,
-      createdAt: DateTime.now(),
-    ),
-  ];
+  List<AddressModel> _addresses = [];
 
-  /// Load all addresses
-  void loadAddresses() {
-    emit(const AddressesLoading());
+  Future<void> loadAddresses() async {
+    if (_addresses.isEmpty) emit(const AddressesLoading());
     try {
-      // TODO: Replace with actual API call
-      // final addresses = await addressRepository.getAddresses();
-      final defaultAddress = _addresses.firstWhere(
-        (addr) => addr.isDefault,
-        orElse: () => _addresses.isNotEmpty
-            ? _addresses.first
-            : AddressModel(
-                id: 0,
-                label: '',
-                address: '',
-                city: '',
-                isDefault: false,
-                createdAt: DateTime.now(),
-              ),
-      );
-      emit(
-        AddressesLoaded(addresses: _addresses, defaultAddress: defaultAddress),
-      );
-    } catch (e) {
-      emit(AddressError('Error al cargar direcciones: ${e.toString()}'));
-    }
-  }
-
-  /// Add new address
-  void addAddress({
-    required String label,
-    required String address,
-    required String city,
-    String? country,
-    String? postalCode,
-  }) {
-    emit(const AddressesLoading());
-    try {
-      // TODO: Replace with actual API call
-      // await addressRepository.addAddress(...)
-      final newAddress = AddressModel(
-        id: _addresses.length + 1,
-        label: label,
-        address: address,
-        city: city,
-        country: country,
-        postalCode: postalCode,
-        isDefault: _addresses.isEmpty,
-        createdAt: DateTime.now(),
-      );
-      _addresses.add(newAddress);
-      emit(AddressAdded(newAddress));
-      loadAddresses();
-    } catch (e) {
-      emit(AddressError('Error al agregar dirección: ${e.toString()}'));
-    }
-  }
-
-  /// Update address
-  void updateAddress({
-    required int id,
-    required String label,
-    required String address,
-    required String city,
-    String? country,
-    String? postalCode,
-  }) {
-    emit(const AddressesLoading());
-    try {
-      // TODO: Replace with actual API call
-      // await addressRepository.updateAddress(...)
-      final index = _addresses.indexWhere((addr) => addr.id == id);
-      if (index != -1) {
-        _addresses[index] = _addresses[index].copyWith(
-          label: label,
-          address: address,
-          city: city,
-          country: country,
-          postalCode: postalCode,
-        );
-        emit(AddressUpdated(_addresses[index]));
-        loadAddresses();
+      final r = await _api.get('/me/addresses') as List;
+      _addresses = [for (final a in r) AddressModel.fromJson(a as Map<String, dynamic>)];
+      AddressModel? def;
+      for (final a in _addresses) {
+        if (a.isDefault) def = a;
       }
-    } catch (e) {
-      emit(AddressError('Error al actualizar dirección: ${e.toString()}'));
+      emit(AddressesLoaded(addresses: _addresses, defaultAddress: def ?? (_addresses.isEmpty ? null : _addresses.first)));
+    } on ApiException catch (e) {
+      emit(AddressError(e.message));
     }
   }
 
-  /// Delete address
-  void deleteAddress(int id) {
+  Map<String, dynamic> _body(String label, String address, String city, String? details, bool isDefault,
+          {double? lat, double? lng}) =>
+      {
+        'label': label.trim(),
+        'address': address.trim(),
+        'city': city.trim().isEmpty ? 'Santa Marta' : city.trim(),
+        'details': (details ?? '').trim(),
+        'isDefault': isDefault,
+        if (lat != null && lng != null) 'latitude': lat,
+        if (lat != null && lng != null) 'longitude': lng,
+      };
+
+  Future<void> addAddress({
+    required String label,
+    required String address,
+    required String city,
+    String? country,
+    String? postalCode,
+    double? latitude,
+    double? longitude,
+  }) async {
     emit(const AddressesLoading());
     try {
-      // TODO: Replace with actual API call
-      // await addressRepository.deleteAddress(id)
-      _addresses.removeWhere((addr) => addr.id == id);
+      final r = await _api.post(
+        '/me/addresses',
+        data: _body(label, address, city, postalCode, _addresses.isEmpty, lat: latitude, lng: longitude),
+      );
+      emit(AddressAdded(AddressModel.fromJson(r as Map<String, dynamic>)));
+      await loadAddresses();
+    } on ApiException catch (e) {
+      emit(AddressError(e.message));
+    }
+  }
+
+  Future<void> updateAddress({
+    required String id,
+    required String label,
+    required String address,
+    required String city,
+    String? country,
+    String? postalCode,
+  }) async {
+    final current = _addresses.where((a) => a.id == id).firstOrNull;
+    emit(const AddressesLoading());
+    try {
+      final r = await _api.put(
+        '/me/addresses/$id',
+        data: _body(label, address, city, postalCode, current?.isDefault ?? false,
+            lat: current?.latitude, lng: current?.longitude),
+      );
+      emit(AddressUpdated(AddressModel.fromJson(r as Map<String, dynamic>)));
+      await loadAddresses();
+    } on ApiException catch (e) {
+      emit(AddressError(e.message));
+    }
+  }
+
+  Future<void> deleteAddress(String id) async {
+    emit(const AddressesLoading());
+    try {
+      await _api.delete('/me/addresses/$id');
       emit(AddressDeleted(id));
-      loadAddresses();
-    } catch (e) {
-      emit(AddressError('Error al eliminar dirección: ${e.toString()}'));
+      await loadAddresses();
+    } on ApiException catch (e) {
+      emit(AddressError(e.message));
     }
   }
 
-  /// Set default address
-  void setDefaultAddress(int id) {
+  Future<void> setDefaultAddress(String id) async {
+    final a = _addresses.where((x) => x.id == id).firstOrNull;
+    if (a == null) return;
     emit(const AddressesLoading());
     try {
-      // TODO: Replace with actual API call
-      // await addressRepository.setDefaultAddress(id)
-      for (var addr in _addresses) {
-        if (addr.id == id) {
-          final index = _addresses.indexOf(addr);
-          _addresses[index] = addr.copyWith(isDefault: true);
-        } else {
-          final index = _addresses.indexOf(addr);
-          _addresses[index] = addr.copyWith(isDefault: false);
-        }
-      }
-      loadAddresses();
-    } catch (e) {
-      emit(
-        AddressError(
-          'Error al establecer dirección por defecto: ${e.toString()}',
-        ),
+      await _api.put(
+        '/me/addresses/$id',
+        data: _body(a.label, a.address, a.city, a.postalCode, true, lat: a.latitude, lng: a.longitude),
       );
+      await loadAddresses();
+    } on ApiException catch (e) {
+      emit(AddressError(e.message));
     }
   }
 }

@@ -18,6 +18,7 @@ class ProductReviewPage extends StatefulWidget {
 }
 
 class _ProductReviewPageState extends State<ProductReviewPage> {
+  bool _sending = false;
   int _stars = 0;
   final _comment = TextEditingController();
   final Set<String> _tags = {};
@@ -189,23 +190,25 @@ class _ProductReviewPageState extends State<ProductReviewPage> {
       ),
       bottomNavigationBar: BottomActionBar(
         child: FilledButton(
-          onPressed: _stars == 0
+          onPressed: _stars == 0 || _sending
               ? null
-              : () {
-                  context.read<MarketOrdersCubit>().rate(
+              : () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  setState(() => _sending = true);
+                  final err = await context.read<MarketOrdersCubit>().rate(
                     o.id,
                     _stars,
                     _comment.text.trim(),
                     _tags.toList(),
                   );
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  if (!context.mounted) return;
+                  setState(() => _sending = false);
+                  messenger.showSnackBar(
                     SnackBar(
-                      content: Text(
-                        '¡Gracias! Tu calificación ya la puede ver ${o.storeName}.',
-                      ),
+                      content: Text(err ?? '¡Gracias! Tu calificación ya la puede ver ${o.storeName}.'),
                     ),
                   );
-                  context.pop();
+                  if (err == null) context.pop();
                 },
           child: const Text('Enviar calificación'),
         ),

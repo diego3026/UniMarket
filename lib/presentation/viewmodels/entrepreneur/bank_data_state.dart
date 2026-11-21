@@ -1,9 +1,7 @@
 import 'package:equatable/equatable.dart';
 
-/// Estados para el manejo de datos bancarios
 abstract class BankDataState extends Equatable {
   const BankDataState();
-
   @override
   List<Object?> get props => [];
 }
@@ -16,115 +14,61 @@ class BankDataLoading extends BankDataState {
   const BankDataLoading();
 }
 
+/// [bankData] es null cuando el emprendedor aún no registra su cuenta.
 class BankDataLoaded extends BankDataState {
-  final BankDataModel bankData;
-
-  const BankDataLoaded(this.bankData);
-
+  final BankDataModel? bankData;
+  final int totalSales;
+  final int deliveredOrders;
+  const BankDataLoaded(this.bankData, {this.totalSales = 0, this.deliveredOrders = 0});
   @override
-  List<Object?> get props => [bankData];
+  List<Object?> get props => [bankData, totalSales, deliveredOrders];
+}
+
+class BankDataSaving extends BankDataState {
+  const BankDataSaving();
 }
 
 class BankDataUpdated extends BankDataState {
   final BankDataModel bankData;
-
   const BankDataUpdated(this.bankData);
-
   @override
   List<Object?> get props => [bankData];
 }
 
-class WithdrawalProcessing extends BankDataState {
-  const WithdrawalProcessing();
-}
-
-class WithdrawalSuccess extends BankDataState {
-  final double amount;
-  final String transactionId;
-
-  const WithdrawalSuccess({required this.amount, required this.transactionId});
-
-  @override
-  List<Object?> get props => [amount, transactionId];
-}
-
 class BankDataError extends BankDataState {
   final String message;
-
   const BankDataError(this.message);
-
   @override
   List<Object?> get props => [message];
 }
 
-/// Modelo de datos bancarios
+/// Cuenta donde el emprendedor recibe sus pagos (PUT /seller/payout-account).
 class BankDataModel extends Equatable {
-  final int id;
   final String bankName;
-  final String accountNumber;
-  final String accountHolderName;
-  final String accountType; // 'Cuenta Corriente', 'Cuenta Ahorros'
-  final String bankCode;
+  final String accountType; // ahorros | corriente | nequi | daviplata
+  final String accountNumberMasked;
+  final String holderName;
   final bool isVerified;
-  final double availableBalance;
-  final double totalEarnings;
-  final DateTime createdAt;
   final DateTime? updatedAt;
 
   const BankDataModel({
-    required this.id,
     required this.bankName,
-    required this.accountNumber,
-    required this.accountHolderName,
     required this.accountType,
-    required this.bankCode,
+    required this.accountNumberMasked,
+    required this.holderName,
     required this.isVerified,
-    required this.availableBalance,
-    required this.totalEarnings,
-    required this.createdAt,
     this.updatedAt,
   });
 
-  BankDataModel copyWith({
-    int? id,
-    String? bankName,
-    String? accountNumber,
-    String? accountHolderName,
-    String? accountType,
-    String? bankCode,
-    bool? isVerified,
-    double? availableBalance,
-    double? totalEarnings,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) {
-    return BankDataModel(
-      id: id ?? this.id,
-      bankName: bankName ?? this.bankName,
-      accountNumber: accountNumber ?? this.accountNumber,
-      accountHolderName: accountHolderName ?? this.accountHolderName,
-      accountType: accountType ?? this.accountType,
-      bankCode: bankCode ?? this.bankCode,
-      isVerified: isVerified ?? this.isVerified,
-      availableBalance: availableBalance ?? this.availableBalance,
-      totalEarnings: totalEarnings ?? this.totalEarnings,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
-  }
+  factory BankDataModel.fromJson(Map<String, dynamic> j) => BankDataModel(
+    bankName: (j['bankName'] ?? '').toString(),
+    accountType: (j['accountType'] ?? 'ahorros').toString(),
+    accountNumberMasked: (j['accountNumberMasked'] ?? '').toString(),
+    holderName: (j['holderName'] ?? '').toString(),
+    isVerified: j['isVerified'] == true,
+    updatedAt: DateTime.tryParse((j['updatedAt'] ?? '').toString()),
+  );
 
   @override
-  List<Object?> get props => [
-    id,
-    bankName,
-    accountNumber,
-    accountHolderName,
-    accountType,
-    bankCode,
-    isVerified,
-    availableBalance,
-    totalEarnings,
-    createdAt,
-    updatedAt,
-  ];
+  List<Object?> get props => [bankName, accountType, accountNumberMasked, holderName, isVerified, updatedAt];
 }

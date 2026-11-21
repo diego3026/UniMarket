@@ -5,21 +5,30 @@ El backend es una API en FastAPI (repositorio `BackEnd-Unimarket`, prefijo `/api
 
 ## Ejecutar
 
+La app habla con la API desplegada en Railway. La API rechaza cualquier petición
+que no traiga la clave de la app (`X-App-Key`), así que primero crea el archivo de
+configuración (no se sube a git):
+
 ```bash
+cp config/prod.example.json config/prod.json
+# edita config/prod.json y pega en APP_KEY el mismo valor de APP_CLIENT_KEYS en Railway
 flutter pub get
-flutter run
+flutter run --dart-define-from-file=config/prod.json
 ```
 
-### Modo demo (sin backend)
-En el login hay accesos rápidos **Cliente**, **Emprendedor** y **Admin**. También puedes escribir:
+En VS Code ya están las configuraciones de **Run and Debug**: «UniMarket (API Railway)»
+y «UniMarket web (Chrome, puerto 5000)». Para probar en Chrome agrega en Railway
+`CORS_ORIGINS=http://localhost:5000` (Android e iOS no lo necesitan).
 
-| Rol | Usuario | Contraseña |
+### Cuentas de prueba (datos demo del servidor)
+
+| Rol | Correo | Contraseña |
 |---|---|---|
-| Cliente | `1234` | `1234` |
-| Emprendedor | `emp` | `emp` |
-| Admin | `admin` | `admin` |
+| Cliente | `cliente@demo.unimarket.app` | `Demo12345` |
+| Emprendedor | `laura@demo.unimarket.app` | `Demo12345` |
 
-La sesión se guarda en el dispositivo; usa **Perfil → Cerrar sesión** para cambiar de rol.
+En modo debug el login muestra accesos rápidos a estas cuentas. El administrador es
+la cuenta creada con `python -m scripts.seed` en el backend.
 
 ## Diseño
 

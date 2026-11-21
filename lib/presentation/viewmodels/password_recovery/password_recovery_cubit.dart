@@ -1,15 +1,16 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/injection_container.dart';
+import '../auth/auth_cubit.dart';
 import 'password_recovery_state.dart';
 
 class PasswordRecoveryCubit extends Cubit<PasswordRecoveryState> {
   PasswordRecoveryCubit() : super(PasswordRecoveryInitial());
 
-  String? _generatedCode;
+  String? _code;
   String? _recoveryEmail;
-  int _codeAttempts = 0;
 
-  /// Simula el envío del correo de recuperación
+  /// Pide a la API que envíe el código de 6 dígitos al correo.
   Future<void> recoverPassword(String email) async {
     if (email.isEmpty) {
       emit(PasswordRecoveryFailure('Por favor ingresa tu correo electrónico'));
@@ -23,42 +24,24 @@ class PasswordRecoveryCubit extends Cubit<PasswordRecoveryState> {
 
     emit(PasswordRecoveryLoading());
 
-    try {
-      await Future.delayed(const Duration(seconds: 2));
-      _generatedCode = _generateCode();
-      _recoveryEmail = email;
-      _codeAttempts = 0;
-      emit(PasswordRecoveryCodeSent(email));
-    } catch (e) {
-      emit(
-        PasswordRecoveryFailure('Error al enviar el correo. Intenta de nuevo.'),
-      );
+    final error = await sl<AuthCubit>().requestPasswordReset(email);
+    if (error != null) {
+      emit(PasswordRecoveryFailure(error));
+      return;
     }
+    _recoveryEmail = email.trim();
+    emit(PasswordRecoveryCodeSent(email));
   }
 
-  /// Verifica el código de recuperación
+  /// Guarda el código; el servidor lo valida al cambiar la contraseña
+  /// (vence en 15 minutos y se bloquea tras 5 intentos).
   Future<void> verifyCode(String code) async {
-    if (code.isEmpty) {
-      emit(PasswordRecoveryFailure('Por favor ingresa el código'));
+    final c = code.trim();
+    if (!RegExp(r'^\d{6}$').hasMatch(c)) {
+      emit(PasswordRecoveryFailure('El código tiene 6 dígitos'));
       return;
     }
-
-    _codeAttempts++;
-
-    if (_codeAttempts > 3) {
-      emit(
-        PasswordRecoveryFailure(
-          'Demasiados intentos fallidos. Intenta de nuevo más tarde.',
-        ),
-      );
-      return;
-    }
-
-    if (code != _generatedCode) {
-      emit(PasswordRecoveryFailure('Código incorrecto. Intenta de nuevo.'));
-      return;
-    }
-
+    _code = c;
     emit(PasswordRecoveryCodeVerified());
   }
 
@@ -69,21 +52,13 @@ class PasswordRecoveryCubit extends Cubit<PasswordRecoveryState> {
       return;
     }
 
-    if (newPassword.length < 6) {
-      emit(
-        PasswordRecoveryFailure(
-          'La contraseña debe tener al menos 6 caracteres',
-        ),
-      );
+    if (newPassword.length < 8) {
+      emit(PasswordRecoveryFailure('La contraseña debe tener al menos 8 caracteres'));
       return;
     }
 
     if (!_isStrongPassword(newPassword)) {
-      emit(
-        PasswordRecoveryFailure(
-          'La contraseña debe contener letras, números y caracteres especiales',
-        ),
-      );
+      emit(PasswordRecoveryFailure('La contraseña debe tener letras y números'));
       return;
     }
 
@@ -94,18 +69,14 @@ class PasswordRecoveryCubit extends Cubit<PasswordRecoveryState> {
 
     emit(PasswordRecoveryLoading());
 
-    try {
-      await Future.delayed(const Duration(seconds: 2));
-      _generatedCode = null;
-      _recoveryEmail = null;
-      emit(PasswordRecoverySuccess(_recoveryEmail ?? ''));
-    } catch (e) {
-      emit(
-        PasswordRecoveryFailure(
-          'Error al restablecer la contraseña. Intenta de nuevo.',
-        ),
-      );
+    final email = _recoveryEmail ?? '';
+    final error = await sl<AuthCubit>().resetPassword(email, _code ?? '', newPassword);
+    if (error != null) {
+      emit(PasswordRecoveryFailure(error));
+      return;
     }
+    _code = null;
+    emit(PasswordRecoverySuccess(email));
   }
 
   bool _isValidEmail(String email) {
@@ -116,20 +87,8 @@ class PasswordRecoveryCubit extends Cubit<PasswordRecoveryState> {
   }
 
   bool _isStrongPassword(String password) {
-    final hasUppercase = password.contains(RegExp(r'[A-Z]'));
-    final hasLowercase = password.contains(RegExp(r'[a-z]'));
-    final hasDigits = password.contains(RegExp(r'\d'));
-    return hasUppercase && hasLowercase && hasDigits;
+    return password.contains(RegExp(r'[A-Za-z]')) && password.contains(RegExp(r'\d'));
   }
-
-  String _generateCode() {
-    return (100000 + (DateTime.now().millisecondsSinceEpoch % 900000))
-        .toString();
-  }
-
-  /// Resetea el estado al inicial
-  /// Solo para el modo demo (sin servidor de correo).
-  String? get demoCode => _generatedCode;
 
   void reset() => emit(PasswordRecoveryInitial());
 }

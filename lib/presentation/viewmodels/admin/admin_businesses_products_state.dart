@@ -36,7 +36,7 @@ class AdminBusinessesError extends AdminBusinessesState {
 }
 
 class AdminBusinessModel extends Equatable {
-  final int id;
+  final String id;
   final String name;
   final String owner;
   final String category;
@@ -58,7 +58,36 @@ class AdminBusinessModel extends Equatable {
     required this.rating,
     required this.revenue,
     required this.createdAt,
+    this.ownerEmail = '',
+    this.reviewNote = '',
   });
+
+  final String ownerEmail;
+  final String reviewNote;
+
+  static const statusLabels = {
+    'approved': 'Activo',
+    'pending': 'Pendiente',
+    'rejected': 'Rechazado',
+    'suspended': 'Suspendido',
+  };
+
+  /// `products` y `revenue` no vienen del listado: se dejan en 0;
+  /// `sales` guarda el número de reseñas.
+  factory AdminBusinessModel.fromJson(Map<String, dynamic> j) => AdminBusinessModel(
+    id: j['id'].toString(),
+    name: (j['name'] ?? '').toString(),
+    owner: (j['ownerName'] ?? '').toString(),
+    ownerEmail: (j['ownerEmail'] ?? '').toString(),
+    reviewNote: (j['reviewNote'] ?? '').toString(),
+    category: (j['category'] ?? '').toString(),
+    status: statusLabels[j['status']] ?? j['status'].toString(),
+    products: 0,
+    sales: (j['ratingCount'] as num?)?.toInt() ?? 0,
+    rating: (j['rating'] as num?)?.toDouble() ?? 0,
+    revenue: 0,
+    createdAt: DateTime.tryParse((j['createdAt'] ?? '').toString())?.toLocal() ?? DateTime.now(),
+  );
 
   AdminBusinessModel copyWith({
     String? status,
@@ -129,7 +158,7 @@ class AdminProductsError extends AdminProductsState {
 }
 
 class AdminProductModel extends Equatable {
-  final int id;
+  final String id;
   final String name;
   final String seller;
   final String category;
@@ -152,6 +181,19 @@ class AdminProductModel extends Equatable {
     required this.reviewCount,
     required this.createdAt,
   });
+
+  factory AdminProductModel.fromJson(Map<String, dynamic> j) => AdminProductModel(
+    id: j['id'].toString(),
+    name: (j['name'] ?? '').toString(),
+    seller: (j['storeName'] ?? '').toString(),
+    category: (j['category'] ?? '').toString(),
+    status: j['isHidden'] == true ? 'Rechazado' : 'Activo',
+    price: (j['price'] as num?)?.toDouble() ?? 0,
+    stock: (j['stock'] as num?)?.toInt() ?? 0,
+    rating: (j['rating'] as num?)?.toDouble() ?? 0,
+    reviewCount: (j['ratingCount'] as num?)?.toInt() ?? 0,
+    createdAt: DateTime.tryParse((j['createdAt'] ?? '').toString())?.toLocal() ?? DateTime.now(),
+  );
 
   AdminProductModel copyWith({String? status, int? stock, double? rating}) {
     return AdminProductModel(

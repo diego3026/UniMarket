@@ -1,27 +1,49 @@
 // lib/presentation/viewmodels/market/market_cubits.dart
 //
-// Estado compartido entre cliente y emprendedor (en memoria por ahora):
-// - StoreSettingsCubit: ubicación de recogida, entregas y pagos de cada tienda.
-// - PromotionsCubit: descuentos y cupones que crea el emprendedor.
-// - MarketOrdersCubit: pedidos que crea el cliente y gestiona el emprendedor.
-// - WalletCubit: tarjetas y Nequi del cliente.
+// Estado compartido entre cliente y emprendedor, conectado a la API:
+// - StoreSettingsCubit: configuración de cada tienda (recogida, entregas, pagos).
+// - PromotionsCubit: descuentos y cupones.
+// - MarketOrdersCubit: pedidos (los del cliente o los de la tienda).
+// - WalletCubit: tarjetas guardadas del cliente.
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../core/utils/formatters.dart';
-import '../../../data/datasources/mock/market_mock_data.dart';
+import '../../../core/network/api_client.dart';
+import '../../../data/api/mappers.dart';
 import '../../../domain/entities/market_entities.dart';
 import '../../models/cart_item.dart';
+import '../catalog/catalog_cubit.dart';
 
 class StoreSettingsCubit extends Cubit<Map<String, StoreSettings>> {
-  StoreSettingsCubit() : super(Map.of(MarketMockData.storeSettings));
+  final CatalogCubit _catalog;
+  final ApiClient _api;
+  late final StreamSubscription _sub;
+
+  StoreSettingsCubit(this._catalog, this._api) : super(const {}) {
+    _sub = _catalog.stream.listen((_) => emit(Map.of(_catalog.settings)));
+  }
 
   StoreSettings of(String storeId) =>
-      state[storeId] ?? StoreSettings(storeId: storeId, pickupPlaceId: 'plaza');
+      state[storeId] ?? _catalog.settings[storeId] ?? StoreSettings(storeId: storeId, pickupPlaceId: 'plaza');
 
-  void update(StoreSettings settings) =>
-      emit({...state, settings.storeId: settings});
+  /// Guarda "Configurar tienda". Devuelve el error o null.
+  Future<String?> update(StoreSettings settings) async {
+    try {
+      final j = await _api.patch('/seller/store', data: settingsToJson(settings)) as Json;
+      _catalog.setMyStore(j);
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _sub.cancel();
+    return super.close();
+  }
 }
 
 /// Resultado de validar un cupón.
@@ -33,87 +55,132 @@ class CouponResult {
 }
 
 class PromotionsCubit extends Cubit<List<PromotionEntity>> {
-  PromotionsCubit() : super(MarketMockData.promotions());
+  final ApiClient _api;
+  PromotionsCubit(this._api) : super(const []);
 
-  List<PromotionEntity> forStore(String storeId) =>
-      state.where((p) => p.storeId == storeId).toList();
+  void _merge(List<PromotionEntity> items) {
+    final byId = {for (final p in state) p.id: p};
+    for (final p in items) {
+      byId[p.id] = p;
+    }
+    emit(byId.values.toList());
+  }
+
+  /// Cupones y descuentos vigentes de todas las tiendas (pantalla Promos, banners).
+  Future<void> loadPublic() async {
+    try {
+      final r = await Future.wait([
+        _api.getCached('/promotions/coupons'),
+        _api.getCached('/promotions/discounts'),
+      ]);
+      _merge([
+        for (final list in r)
+          for (final p in list as List) promotionFrom(p as Json),
+      ]);
+    } on ApiException {
+      // Sin promociones no se bloquea la app.
+    }
+  }
+
+  /// Promociones del emprendedor (incluye pausadas y vencidas).
+  Future<void> loadMine() async {
+    try {
+      final r = await _api.get('/seller/promotions') as List;
+      _merge([for (final p in r) promotionFrom(p as Json)]);
+    } on ApiException {
+      // Se reintenta al abrir la pantalla.
+    }
+  }
+
+  /// Descuento automático vigente que aplica a un producto (para mostrar su nombre).
+  PromotionEntity? discountFor(String storeId, String productId) {
+    for (final p in state) {
+      if (p.storeId == storeId &&
+          p.kind == PromotionKind.productDiscount &&
+          p.isRunning &&
+          (p.productIds.isEmpty || p.productIds.contains(productId))) {
+        return p;
+      }
+    }
+    return null;
+  }
+
+  List<PromotionEntity> forStore(String storeId) => state.where((p) => p.storeId == storeId).toList();
 
   List<PromotionEntity> activeCoupons(String storeId) => state
-      .where(
-        (p) =>
-            p.storeId == storeId &&
-            p.kind == PromotionKind.coupon &&
-            p.isRunning,
-      )
+      .where((p) => p.storeId == storeId && p.kind == PromotionKind.coupon && p.isRunning)
       .toList();
 
-  /// Promoción automática que aplica a un producto (la de mayor ahorro).
-  PromotionEntity? bestFor(String storeId, String productId, double price) {
-    PromotionEntity? best;
-    for (final p in state) {
-      if (p.storeId != storeId ||
-          p.kind != PromotionKind.productDiscount ||
-          !p.isRunning) {
-        continue;
-      }
-      if (p.productIds.isNotEmpty && !p.productIds.contains(productId)) {
-        continue;
-      }
-      if (best == null || p.apply(price) < best.apply(price)) best = p;
-    }
-    return best;
-  }
-
-  CouponResult validateCoupon(String code, String storeId, double subtotal) {
+  /// Valida el cupón con el servidor (mínimo de compra, usos, vigencia).
+  Future<CouponResult> validateCoupon(String code, String storeId, double subtotal) async {
     final c = code.trim().toUpperCase();
     if (c.isEmpty) return const CouponResult(error: 'Escribe un código');
-    PromotionEntity? promo;
-    for (final p in state) {
-      if (p.kind == PromotionKind.coupon && p.code.toUpperCase() == c) {
-        promo = p;
+    try {
+      final r = await _api.post(
+        '/orders/coupon-check',
+        data: {'storeId': storeId, 'code': c, 'subtotal': subtotal.round()},
+      ) as Json;
+      if (r['valid'] != true) {
+        return CouponResult(error: (r['message'] ?? 'El cupón no es válido').toString());
       }
-    }
-    if (promo == null) return const CouponResult(error: 'Ese cupón no existe');
-    if (promo.storeId != storeId) {
-      return const CouponResult(error: 'Este cupón es de otro emprendimiento');
-    }
-    if (!promo.isRunning) {
-      return const CouponResult(error: 'Este cupón ya no está activo');
-    }
-    if (subtotal < promo.minPurchase) {
       return CouponResult(
-        error:
-            'Compra mínima de ${formatCop(promo.minPurchase)} para usar este cupón',
+        promotion: r['promotion'] is Map ? promotionFrom(r['promotion'] as Json) : null,
+        discount: (r['discount'] as num).toDouble(),
       );
+    } on ApiException catch (e) {
+      return CouponResult(error: e.message);
     }
-    return CouponResult(
-      promotion: promo,
-      discount: subtotal - promo.apply(subtotal),
-    );
   }
 
-  void save(PromotionEntity promo) {
-    final exists = state.any((p) => p.id == promo.id);
-    emit(
-      exists
-          ? [for (final p in state) p.id == promo.id ? promo : p]
-          : [promo, ...state],
-    );
+  static final _uuid = RegExp(r'^[0-9a-f-]{36}$');
+
+  /// Crea o actualiza una promoción. Devuelve el error o null.
+  Future<String?> save(PromotionEntity promo) async {
+    try {
+      final isNew = !_uuid.hasMatch(promo.id);
+      final r = isNew
+          ? await _api.post('/seller/promotions', data: promotionToJson(promo))
+          : await _api.put('/seller/promotions/${promo.id}', data: promotionToJson(promo));
+      final saved = promotionFrom(r as Json);
+      emit([saved, ...state.where((p) => p.id != promo.id && p.id != saved.id)]);
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
   }
 
-  void toggle(String id, bool active) => emit([
-    for (final p in state) p.id == id ? p.copyWith(active: active) : p,
-  ]);
+  Future<String?> toggle(String id, bool active) async {
+    try {
+      final r = await _api.post('/seller/promotions/$id/${active ? 'resume' : 'pause'}');
+      final p = promotionFrom(r as Json);
+      emit([for (final x in state) x.id == id ? p : x]);
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
 
-  void delete(String id) => emit(state.where((p) => p.id != id).toList());
+  Future<String?> delete(String id) async {
+    try {
+      await _api.delete('/seller/promotions/$id');
+      emit(state.where((p) => p.id != id).toList());
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
 
-  String newId() => 'pr${DateTime.now().millisecondsSinceEpoch}';
+  String newId() => 'nuevo-${DateTime.now().millisecondsSinceEpoch}';
+
+  void clear() => emit(const []);
 }
 
 class MarketOrdersCubit extends Cubit<List<MarketOrder>> {
-  MarketOrdersCubit() : super(MarketMockData.orders());
+  final ApiClient _api;
+  MarketOrdersCubit(this._api) : super(const []);
 
-  final _rand = Random();
+  /// true si los pedidos cargados son los de la tienda (emprendedor).
+  bool _asSeller = false;
 
   MarketOrder? byId(String id) {
     for (final o in state) {
@@ -122,83 +189,137 @@ class MarketOrdersCubit extends Cubit<List<MarketOrder>> {
     return null;
   }
 
-  List<MarketOrder> forCustomer(String name) =>
-      state.where((o) => o.customerName == name).toList();
+  void _upsert(MarketOrder o) {
+    final exists = state.any((x) => x.id == o.id);
+    emit(exists ? [for (final x in state) x.id == o.id ? o : x] : [o, ...state]);
+  }
 
-  List<MarketOrder> forStore(String storeId) =>
-      state.where((o) => o.storeId == storeId).toList();
+  /// Pedidos del cliente.
+  Future<void> loadMine() async {
+    _asSeller = false;
+    try {
+      final r = await _api.getCached('/orders', query: {'size': 50}) as Json;
+      emit([for (final o in r['items'] as List) orderFrom(o as Json)]);
+    } on ApiException {
+      // Se mantiene lo que ya había.
+    }
+  }
 
-  MarketOrder place({
+  /// Pedidos que recibe la tienda del emprendedor.
+  Future<void> loadStore() async {
+    _asSeller = true;
+    try {
+      final r = await _api.getCached('/seller/orders', query: {'size': 50}) as Json;
+      emit([for (final o in r['items'] as List) orderFrom(o as Json)]);
+    } on ApiException {
+      // Se mantiene lo que ya había.
+    }
+  }
+
+  Future<void> refresh() => _asSeller ? loadStore() : loadMine();
+
+  /// Actualiza un pedido (seguimiento). Con ETag casi no gasta datos.
+  Future<MarketOrder?> fetch(String id) async {
+    try {
+      final j = await _api.getCached('/orders/$id') as Json;
+      final o = orderFrom(j);
+      _upsert(o);
+      return o;
+    } on ApiException {
+      return byId(id);
+    }
+  }
+
+  List<MarketOrder> forCustomer(String _) => state;
+
+  List<MarketOrder> forStore(String storeId) => state.where((o) => o.storeId == storeId).toList();
+
+  /// Crea el pedido. El servidor calcula precios y totales. Lanza ApiException si falla.
+  Future<MarketOrder> place({
     required String storeId,
-    required String storeName,
-    required String customerName,
     required List<CartItem> items,
     required FulfillmentMode mode,
     required String placeId,
     required String notes,
-    required double deliveryFee,
     required PromotionEntity? coupon,
-    required double couponDiscount,
-    required String paymentLabel,
-  }) {
-    final now = DateTime.now();
-    final subtotal = items.fold<double>(0, (s, i) => s + i.totalPrice);
-    final order = MarketOrder(
-      id: '${1046 + state.length}',
-      pickupCode: (1000 + _rand.nextInt(9000)).toString(),
-      storeId: storeId,
-      storeName: storeName,
-      customerName: customerName,
-      lines: [
-        for (final i in items)
-          OrderLine(
-            productId: i.product.id,
-            name: i.product.name,
-            category: i.product.category,
-            unitPrice: i.product.finalPrice,
-            quantity: i.quantity,
-          ),
-      ],
-      subtotal: subtotal,
-      couponCode: coupon?.code ?? '',
-      couponDiscount: couponDiscount,
-      deliveryFee: deliveryFee,
-      mode: mode,
-      placeId: placeId,
-      notes: notes,
-      paymentLabel: paymentLabel,
-      status: OrderStatus.pending,
-      createdAt: now,
-      history: {OrderStatus.pending: now},
+    required PaymentChoice payment,
+    required String idempotencyKey,
+  }) async {
+    final r = await _api.post(
+      '/orders',
+      headers: {'Idempotency-Key': idempotencyKey},
+      data: {
+        'storeId': storeId,
+        'lines': [
+          for (final i in items) {'productId': i.product.id, 'quantity': i.quantity},
+        ],
+        'mode': mode.name,
+        if (mode == FulfillmentMode.delivery) 'placeId': placeId,
+        'notes': notes,
+        if (coupon != null && coupon.code.isNotEmpty) 'couponCode': coupon.code,
+        'paymentKind': payment.kind.name,
+        if (payment.card != null) 'paymentMethodId': payment.card!.id,
+      },
     );
-    emit([order, ...state]);
+    final order = orderFrom(r as Json);
+    _upsert(order);
     return order;
   }
 
-  void _set(String id, OrderStatus status) => emit([
-    for (final o in state)
-      o.id == id
-          ? o.copyWith(
-              status: status,
-              history: {...o.history, status: DateTime.now()},
-            )
-          : o,
-  ]);
-
-  /// Avanza al siguiente estado del flujo (aceptar, listo, entregado…).
-  void advance(String id) {
-    final next = byId(id)?.next;
-    if (next != null) _set(id, next);
+  static String newIdempotencyKey() {
+    final r = Random.secure();
+    return List.generate(24, (_) => r.nextInt(16).toRadixString(16)).join();
   }
 
-  void cancel(String id) => _set(id, OrderStatus.cancelled);
+  Future<String?> _run(Future<dynamic> Function() call) async {
+    try {
+      final r = await call();
+      if (r is Map) _upsert(orderFrom(r as Json));
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
 
-  void rate(String id, int stars, String review, List<String> tags) => emit([
-    for (final o in state)
-      o.id == id
-          ? o.copyWith(rating: stars, review: review, reviewTags: tags)
-          : o,
-  ]);
+  /// Avanza al siguiente estado (emprendedor). Para entregar un pedido de
+  /// recogida puede enviar el código que dicta el cliente.
+  Future<String?> advance(String id, {String? pickupCode}) {
+    final next = byId(id)?.next;
+    if (next == null) return Future.value('El pedido ya terminó');
+    return _run(
+      () => _api.post(
+        '/seller/orders/$id/status',
+        data: {'status': next.name, if (pickupCode != null && pickupCode.isNotEmpty) 'pickupCode': pickupCode},
+      ),
+    );
+  }
+
+  /// Cancelar: el cliente (solo si está pendiente) o la tienda (rechazar).
+  Future<String?> cancel(String id, {String reason = ''}) => _run(
+    () => _asSeller
+        ? _api.post('/seller/orders/$id/status', data: {'status': 'cancelled', 'reason': reason})
+        : _api.post('/orders/$id/cancel', data: {'reason': reason}),
+  );
+
+  Future<String?> rate(String id, int stars, String review, List<String> tags) async {
+    try {
+      await _api.post('/orders/$id/review', data: {'rating': stars, 'comment': review, 'tags': tags});
+      await fetch(id);
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
+
+  /// "Ya pagué": el cliente avisa que transfirió.
+  Future<String?> reportPayment(String id, String reference) =>
+      _run(() => _api.post('/orders/$id/payment-report', data: {'reference': reference}));
+
+  /// La tienda confirma si le llegó la transferencia.
+  Future<String?> confirmPayment(String id, bool received) =>
+      _run(() => _api.post('/seller/orders/$id/payment-confirm', data: {'received': received}));
+
+  void clear() => emit(const []);
 }
 
 class WalletState {
@@ -215,19 +336,21 @@ class WalletState {
 }
 
 class WalletCubit extends Cubit<WalletState> {
-  WalletCubit()
-    : super(
-        const WalletState(
-          cards: MarketMockData.cards,
-          nequiPhone: '300 123 4567',
-        ),
-      );
+  final ApiClient _api;
+  WalletCubit(this._api) : super(const WalletState(cards: [], nequiPhone: ''));
 
-  void addCard({
-    required String number,
-    required String holder,
-    required String expiry,
-  }) {
+  Future<void> load() async {
+    try {
+      final r = await _api.get('/me/payment-methods') as List;
+      emit(WalletState(cards: [for (final c in r) cardFrom(c as Json)], nequiPhone: state.nequiPhone));
+    } on ApiException {
+      // Se reintenta al abrir la billetera.
+    }
+  }
+
+  /// Guarda la tarjeta. Al servidor solo viajan la marca y los últimos 4 dígitos:
+  /// el número completo y el CVV nunca salen del teléfono.
+  Future<String?> addCard({required String number, required String holder, required String expiry}) async {
     final digits = number.replaceAll(RegExp(r'\D'), '');
     final brand = digits.startsWith('4')
         ? 'Visa'
@@ -235,35 +358,50 @@ class WalletCubit extends Cubit<WalletState> {
         ? 'Mastercard'
         : digits.startsWith('3')
         ? 'Amex'
-        : 'Tarjeta';
-    final card = PaymentCard(
-      id: 'c${DateTime.now().millisecondsSinceEpoch}',
-      brand: brand,
-      last4: digits.substring(max(0, digits.length - 4)),
-      holder: holder.toUpperCase(),
-      expiry: expiry,
-      isDefault: state.cards.isEmpty,
-    );
-    emit(
-      WalletState(cards: [...state.cards, card], nequiPhone: state.nequiPhone),
-    );
-  }
-
-  void remove(String id) {
-    final rest = state.cards.where((c) => c.id != id).toList();
-    if (rest.isNotEmpty && !rest.any((c) => c.isDefault)) {
-      rest[0] = rest[0].copyWith(isDefault: true);
+        : 'Otra';
+    final parts = expiry.split('/');
+    final month = int.tryParse(parts.first.trim()) ?? 1;
+    final year = 2000 + (int.tryParse(parts.length > 1 ? parts[1].trim() : '') ?? 0) % 100;
+    try {
+      await _api.post(
+        '/me/payment-methods',
+        data: {
+          'brand': brand,
+          'last4': digits.substring(max(0, digits.length - 4)),
+          'holder': holder,
+          'expMonth': month,
+          'expYear': year,
+          'isDefault': state.cards.isEmpty,
+        },
+      );
+      await load();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
     }
-    emit(WalletState(cards: rest, nequiPhone: state.nequiPhone));
   }
 
-  void setDefault(String id) => emit(
-    WalletState(
-      cards: [for (final c in state.cards) c.copyWith(isDefault: c.id == id)],
-      nequiPhone: state.nequiPhone,
-    ),
-  );
+  Future<String?> remove(String id) async {
+    try {
+      await _api.delete('/me/payment-methods/$id');
+      await load();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
 
-  void setNequi(String phone) =>
-      emit(WalletState(cards: state.cards, nequiPhone: phone));
+  Future<String?> setDefault(String id) async {
+    try {
+      await _api.post('/me/payment-methods/$id/default');
+      await load();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
+
+  void setNequi(String phone) => emit(WalletState(cards: state.cards, nequiPhone: phone));
+
+  void clear() => emit(const WalletState(cards: [], nequiPhone: ''));
 }

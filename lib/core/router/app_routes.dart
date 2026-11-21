@@ -76,6 +76,5 @@ class AppRoutes {
     login,
     register,
     recoverPassword,
-    confirmEmail,
   };
 }

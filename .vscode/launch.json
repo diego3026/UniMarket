@@ -1,0 +1,34 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "UniMarket (API Railway)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define-from-file=config/prod.json"
+      ]
+    },
+    {
+      "name": "UniMarket web (Chrome, puerto 5000)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "args": [
+        "--dart-define-from-file=config/prod.json",
+        "--web-port=5000"
+      ]
+    },
+    {
+      "name": "UniMarket (API local)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define-from-file=config/local.json"
+      ]
+    }
+  ]
+}

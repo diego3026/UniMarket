@@ -1,3 +1,4 @@
+import 'package:unimarket/presentation/viewmodels/catalog/catalog_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,12 +7,10 @@ import 'package:go_router/go_router.dart';
 import '../../../constants/app_colors.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../data/datasources/mock/market_mock_data.dart';
 import '../../../domain/entities/market_entities.dart';
 import '../../viewmodels/market/market_cubits.dart';
 import '../../widgets/ui/app_widgets.dart';
 import '../../widgets/ui/campus_map.dart';
-import 'seller_mock.dart';
 
 /// Configuración de la tienda: dónde recogen los clientes, si hace
 /// domicilios, costos, tiempo de preparación y medios de pago.
@@ -25,7 +24,7 @@ class StoreSettingsPage extends StatefulWidget {
 
 class _StoreSettingsPageState extends State<StoreSettingsPage> {
   late StoreSettings _s = context.read<StoreSettingsCubit>().of(
-    SellerMock.store.id,
+    Catalog.myStoreOrEmpty.id,
   );
   late final _notes = TextEditingController(text: _s.pickupNotes);
   late final _fee = TextEditingController(
@@ -35,48 +34,60 @@ class _StoreSettingsPageState extends State<StoreSettingsPage> {
     text: _s.minOrder == 0 ? '' : _s.minOrder.round().toString(),
   );
   late final _phone = TextEditingController(text: _s.phone);
+  late final _nequi = TextEditingController(text: _s.nequiPhone);
+  late final _breb = TextEditingController(text: _s.brebKey);
+  bool _saving = false;
+
+  static final _brebRe = RegExp(r'^(@[A-Za-z0-9._-]{3,40}|3\d{9}|[^@\s]+@[^@\s]+\.[a-z]{2,}|\d{5,15})$');
 
   @override
   void dispose() {
-    for (final c in [_notes, _fee, _min, _phone]) {
+    for (final c in [_notes, _fee, _min, _phone, _nequi, _breb]) {
       c.dispose();
     }
     super.dispose();
   }
 
-  void _save() {
+  void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+
+  Future<void> _save() async {
     if (!_s.allowsDelivery && !_s.allowsPickup) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Activa al menos domicilio o recoger en tienda'),
-        ),
-      );
-      return;
+      return _snack('Activa al menos domicilio o recoger en tienda');
     }
-    if (!_s.acceptsCash && !_s.acceptsNequi && !_s.acceptsCard) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Elige al menos un medio de pago')),
-      );
-      return;
+    if (!_s.acceptsCash && !_s.acceptsNequi && !_s.acceptsBreb) {
+      return _snack('Elige al menos un medio de pago');
     }
-    context.read<StoreSettingsCubit>().update(
+    final nequi = _nequi.text.replaceAll(RegExp(r'\D'), '');
+    final breb = _breb.text.trim();
+    if (_s.acceptsNequi && !RegExp(r'^3\d{9}$').hasMatch(nequi)) {
+      return _snack('Escribe el celular de Nequi (10 dígitos, empieza por 3)');
+    }
+    if (_s.acceptsBreb && !_brebRe.hasMatch(breb)) {
+      return _snack('Escribe tu llave Bre-B: @alias, celular, correo o documento');
+    }
+    setState(() => _saving = true);
+    final err = await context.read<StoreSettingsCubit>().update(
       _s.copyWith(
         pickupNotes: _notes.text.trim(),
         deliveryFee: double.tryParse(_fee.text) ?? 0,
         minOrder: double.tryParse(_min.text) ?? 0,
         phone: _phone.text.trim(),
+        nequiPhone: nequi,
+        brebKey: breb,
+        acceptsCard: false,
       ),
     );
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Configuración guardada')));
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (err != null) return _snack(err);
+    _snack('Configuración guardada');
     context.pop();
   }
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final place = MarketMockData.place(_s.pickupPlaceId);
+    final place = Catalog.place(_s.pickupPlaceId);
 
     Widget section(String title, String subtitle, List<Widget> children) =>
         Padding(
@@ -116,7 +127,7 @@ class _StoreSettingsPageState extends State<StoreSettingsPage> {
                     placeId: _s.pickupPlaceId,
                     icon: Icons.storefront_rounded,
                     color: AppColors.seller,
-                    label: SellerMock.store.name,
+                    label: Catalog.myStoreOrEmpty.name,
                   ),
                 ],
                 onPlaceTap: (p) =>
@@ -257,25 +268,45 @@ class _StoreSettingsPageState extends State<StoreSettingsPage> {
               ),
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
-                secondary: const Icon(
-                  Icons.phone_iphone_rounded,
-                  color: Color(0xFFDA0081),
-                ),
-                title: const Text('Nequi'),
-                value: _s.acceptsNequi,
-                onChanged: (v) =>
-                    setState(() => _s = _s.copyWith(acceptsNequi: v)),
+                secondary: const Icon(Icons.bolt_rounded, color: AppColors.primary),
+                title: const Text('Transferencia Bre-B'),
+                subtitle: const Text('Desde cualquier banco, sin costo'),
+                value: _s.acceptsBreb,
+                onChanged: (v) => setState(() => _s = _s.copyWith(acceptsBreb: v)),
               ),
+              if (_s.acceptsBreb)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: TextField(
+                    controller: _breb,
+                    decoration: const InputDecoration(
+                      labelText: 'Tu llave Bre-B',
+                      hintText: '@mitienda, celular, correo o cédula',
+                    ),
+                  ),
+                ),
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
-                secondary: const Icon(
-                  Icons.credit_card_rounded,
-                  color: AppColors.info,
+                secondary: const Icon(Icons.phone_iphone_rounded, color: Color(0xFFDA0081)),
+                title: const Text('Nequi'),
+                value: _s.acceptsNequi,
+                onChanged: (v) => setState(() => _s = _s.copyWith(acceptsNequi: v)),
+              ),
+              if (_s.acceptsNequi)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: TextField(
+                    controller: _nequi,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(labelText: 'Celular de Nequi', prefixText: '+57 '),
+                  ),
                 ),
-                title: const Text('Tarjeta débito o crédito'),
-                value: _s.acceptsCard,
-                onChanged: (v) =>
-                    setState(() => _s = _s.copyWith(acceptsCard: v)),
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text(
+                  'El pago con tarjeta llegará pronto.',
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
               ),
             ],
           ),
@@ -309,7 +340,7 @@ class _StoreSettingsPageState extends State<StoreSettingsPage> {
                 ),
                 MenuTile(
                   icon: Icons.account_balance_outlined,
-                  title: 'Datos bancarios',
+                  title: 'Cuenta de pagos',
                   onTap: () => context.push(AppRoutes.sellerBank),
                 ),
               ],
@@ -319,8 +350,8 @@ class _StoreSettingsPageState extends State<StoreSettingsPage> {
       ),
       bottomNavigationBar: BottomActionBar(
         child: FilledButton(
-          onPressed: _save,
-          child: const Text('Guardar cambios'),
+          onPressed: _saving ? null : _save,
+          child: Text(_saving ? 'Guardando…' : 'Guardar cambios'),
         ),
       ),
     );

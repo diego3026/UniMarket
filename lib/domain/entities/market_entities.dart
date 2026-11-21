@@ -45,6 +45,9 @@ class StoreSettings extends Equatable {
   final bool acceptsCash;
   final bool acceptsNequi;
   final bool acceptsCard;
+  final bool acceptsBreb;
+  final String nequiPhone;
+  final String brebKey;
   final String phone;
 
   const StoreSettings({
@@ -58,9 +61,12 @@ class StoreSettings extends Equatable {
     required this.pickupPlaceId,
     this.pickupNotes = '',
     this.acceptsCash = true,
-    this.acceptsNequi = true,
+    this.acceptsNequi = false,
     this.acceptsCard = false,
-    this.phone = '300 000 0000',
+    this.acceptsBreb = false,
+    this.nequiPhone = '',
+    this.brebKey = '',
+    this.phone = '',
   });
 
   StoreSettings copyWith({
@@ -75,6 +81,9 @@ class StoreSettings extends Equatable {
     bool? acceptsCash,
     bool? acceptsNequi,
     bool? acceptsCard,
+    bool? acceptsBreb,
+    String? nequiPhone,
+    String? brebKey,
     String? phone,
   }) => StoreSettings(
     storeId: storeId,
@@ -89,6 +98,9 @@ class StoreSettings extends Equatable {
     acceptsCash: acceptsCash ?? this.acceptsCash,
     acceptsNequi: acceptsNequi ?? this.acceptsNequi,
     acceptsCard: acceptsCard ?? this.acceptsCard,
+    acceptsBreb: acceptsBreb ?? this.acceptsBreb,
+    nequiPhone: nequiPhone ?? this.nequiPhone,
+    brebKey: brebKey ?? this.brebKey,
     phone: phone ?? this.phone,
   );
 
@@ -106,6 +118,9 @@ class StoreSettings extends Equatable {
     acceptsCash,
     acceptsNequi,
     acceptsCard,
+    acceptsBreb,
+    nequiPhone,
+    brebKey,
     phone,
   ];
 }
@@ -177,6 +192,14 @@ class PromotionEntity extends Equatable {
         : price - value;
     final rounded = (p / 100).round() * 100.0;
     return rounded.clamp(0, price).toDouble();
+  }
+
+  /// Descuento de un cupón sobre el subtotal (misma regla que el servidor).
+  double couponDiscount(double subtotal) {
+    final v = type == DiscountType.percent
+        ? (subtotal * value / 100 / 100).round() * 100.0
+        : value;
+    return v.clamp(0, subtotal).toDouble();
   }
 
   PromotionEntity copyWith({
@@ -253,7 +276,47 @@ class PaymentCard extends Equatable {
   List<Object?> get props => [id, isDefault];
 }
 
-enum PaymentKind { cash, nequi, card }
+enum PaymentKind {
+  cash,
+  nequi,
+  breb,
+  card;
+
+  bool get isTransfer => this == nequi || this == breb;
+}
+
+/// Estado del pago de un pedido.
+enum PaymentStatus {
+  pending('Pendiente de pago'),
+  reported('Pago reportado'),
+  paid('Pagado'),
+  failed('Pago no recibido'),
+  refunded('Reembolsado'),
+  authorized('Autorizado');
+
+  final String label;
+  const PaymentStatus(this.label);
+}
+
+/// A dónde transferir (llave Bre-B o Nequi del emprendedor).
+class PayTo extends Equatable {
+  final PaymentKind kind;
+  final String key;
+  final String holderName;
+  final double amount;
+  final String referenceHint;
+
+  const PayTo({
+    required this.kind,
+    required this.key,
+    required this.holderName,
+    required this.amount,
+    required this.referenceHint,
+  });
+
+  @override
+  List<Object?> get props => [kind, key, amount];
+}
 
 /// Medio de pago elegido al finalizar la compra.
 class PaymentChoice extends Equatable {
@@ -262,6 +325,7 @@ class PaymentChoice extends Equatable {
 
   const PaymentChoice.cash() : kind = PaymentKind.cash, card = null;
   const PaymentChoice.nequi() : kind = PaymentKind.nequi, card = null;
+  const PaymentChoice.breb() : kind = PaymentKind.breb, card = null;
   const PaymentChoice.card(PaymentCard this.card) : kind = PaymentKind.card;
 
   String label(FulfillmentMode mode) => switch (kind) {
@@ -269,7 +333,8 @@ class PaymentChoice extends Equatable {
       mode == FulfillmentMode.pickup
           ? 'Efectivo al recoger'
           : 'Efectivo contra entrega',
-    PaymentKind.nequi => 'Nequi',
+    PaymentKind.nequi => 'Transferencia Nequi',
+    PaymentKind.breb => 'Transferencia Bre-B',
     PaymentKind.card => '${card!.brand} •••• ${card!.last4}',
   };
 
@@ -334,6 +399,15 @@ class MarketOrder extends Equatable {
   final int? rating;
   final String review;
   final List<String> reviewTags;
+  final PaymentKind paymentKind;
+  final PaymentStatus paymentStatus;
+  final String paymentReference;
+  final PayTo? payTo;
+  final String customerPhone;
+  final String placeName;
+  final double productDiscount;
+  final String cancelReason;
+  final String sellerReply;
 
   const MarketOrder({
     required this.id,
@@ -356,6 +430,15 @@ class MarketOrder extends Equatable {
     this.rating,
     this.review = '',
     this.reviewTags = const [],
+    this.paymentKind = PaymentKind.cash,
+    this.paymentStatus = PaymentStatus.pending,
+    this.paymentReference = '',
+    this.payTo,
+    this.customerPhone = '',
+    this.placeName = '',
+    this.productDiscount = 0,
+    this.cancelReason = '',
+    this.sellerReply = '',
   });
 
   double get total => subtotal - couponDiscount + deliveryFee;
@@ -411,8 +494,17 @@ class MarketOrder extends Equatable {
     rating: rating ?? this.rating,
     review: review ?? this.review,
     reviewTags: reviewTags ?? this.reviewTags,
+    paymentKind: paymentKind,
+    paymentStatus: paymentStatus,
+    paymentReference: paymentReference,
+    payTo: payTo,
+    customerPhone: customerPhone,
+    placeName: placeName,
+    productDiscount: productDiscount,
+    cancelReason: cancelReason,
+    sellerReply: sellerReply,
   );
 
   @override
-  List<Object?> get props => [id, status, history.length, rating];
+  List<Object?> get props => [id, status, history.length, rating, paymentStatus, paymentReference];
 }

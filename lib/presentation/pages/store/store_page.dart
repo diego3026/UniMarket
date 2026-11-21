@@ -1,3 +1,4 @@
+import 'package:unimarket/presentation/viewmodels/catalog/catalog_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,8 +7,6 @@ import 'package:go_router/go_router.dart';
 import '../../../constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../data/datasources/mock/catalog_mock_data.dart';
-import '../../../data/datasources/mock/market_mock_data.dart';
 import '../../viewmodels/market/market_cubits.dart';
 import '../../widgets/ui/campus_map.dart';
 import '../../../domain/entities/product_entity.dart';
@@ -30,7 +29,8 @@ class _StorePageState extends State<StorePage> {
 
   @override
   Widget build(BuildContext context) {
-    final store = CatalogMockData.storeById(widget.storeId);
+    context.watch<CatalogCubit>(); // se reconstruye cuando llegan los datos de la API
+    final store = Catalog.storeById(widget.storeId);
     final t = Theme.of(context).textTheme;
     if (store == null) {
       return Scaffold(
@@ -193,7 +193,7 @@ class _StoreInfo extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final s = context.watch<StoreSettingsCubit>().of(storeId);
     final coupons = context.watch<PromotionsCubit>().activeCoupons(storeId);
-    final place = MarketMockData.place(s.pickupPlaceId);
+    final place = Catalog.place(s.pickupPlaceId);
     final pays = [
       if (s.acceptsCash) 'Efectivo',
       if (s.acceptsNequi) 'Nequi',

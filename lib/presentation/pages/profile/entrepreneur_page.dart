@@ -176,18 +176,14 @@ class _EntrepreneurPageState extends State<EntrepreneurPage> {
                           messenger.showSnackBar(
                             const SnackBar(
                               content: Text(
-                                'Solicitud enviada. Nos contactaremos pronto.',
+                                'Tienda creada. Un administrador la revisará antes de publicarla.',
                               ),
                             ),
                           );
                           nav.pop(true);
                         } else {
                           messenger.showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Complete los campos obligatorios y acepte términos.',
-                              ),
-                            ),
+                            SnackBar(content: Text(vm.error ?? 'No se pudo crear la tienda')),
                           );
                         }
                       },

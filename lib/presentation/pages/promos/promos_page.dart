@@ -1,3 +1,4 @@
+import 'package:unimarket/presentation/viewmodels/catalog/catalog_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -7,7 +8,6 @@ import '../../../constants/app_colors.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../data/datasources/mock/catalog_mock_data.dart';
 import '../../../domain/entities/market_entities.dart';
 import '../../../domain/entities/product_entity.dart';
 import '../../viewmodels/market/market_cubits.dart';
@@ -28,6 +28,7 @@ class _PromosPageState extends State<PromosPage> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<CatalogCubit>(); // se reconstruye cuando llegan los datos de la API
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -169,7 +170,7 @@ class _CouponsStrip extends StatelessWidget {
             separatorBuilder: (_, _) => const SizedBox(width: 12),
             itemBuilder: (context, i) {
               final c = coupons[i];
-              final store = CatalogMockData.storeById(c.storeId);
+              final store = Catalog.storeById(c.storeId);
               return SizedBox(
                 width: 250,
                 child: SurfaceCard(

@@ -1,3 +1,4 @@
+import 'package:unimarket/presentation/viewmodels/catalog/catalog_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,11 +10,10 @@ import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../domain/entities/market_entities.dart';
-import '../../../domain/entities/product_entity.dart';
 import '../../viewmodels/market/market_cubits.dart';
+import '../../viewmodels/market/seller_products_cubit.dart';
 import '../../viewmodels/product/product_cubit.dart';
 import '../../widgets/ui/app_widgets.dart';
-import 'seller_mock.dart';
 
 /// Promociones y cupones del emprendedor.
 /// Los descuentos cambian el precio que ve el cliente en toda la app;
@@ -30,8 +30,9 @@ class _SellerPromotionsPageState extends State<SellerPromotionsPage> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<CatalogCubit>(); // se reconstruye cuando llegan los datos de la API
     final t = Theme.of(context).textTheme;
-    final all = context.watch<PromotionsCubit>().forStore(SellerMock.store.id);
+    final all = context.watch<PromotionsCubit>().forStore(Catalog.myStoreOrEmpty.id);
     final items = all
         .where((p) => _tab == 'Activas' ? p.isRunning : !p.isRunning)
         .toList();
@@ -225,8 +226,16 @@ class _PromoCard extends StatelessWidget {
                 ),
               Switch(
                 value: p.active,
-                onChanged: (v) =>
-                    context.read<PromotionsCubit>().toggle(p.id, v),
+                onChanged: (v) async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  final products = context.read<ProductCubit>();
+                  final err = await context.read<PromotionsCubit>().toggle(p.id, v);
+                  if (err != null) {
+                    messenger.showSnackBar(SnackBar(content: Text(err)));
+                  } else {
+                    products.loadProducts();
+                  }
+                },
               ),
             ],
           ),
@@ -273,20 +282,24 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
     super.dispose();
   }
 
-  void _save() {
+  bool _saving = false;
+
+  Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
     final cubit = context.read<PromotionsCubit>();
+    final messenger = ScaffoldMessenger.of(context);
     final base =
         widget.initial ??
         PromotionEntity(
           id: cubit.newId(),
-          storeId: SellerMock.store.id,
+          storeId: Catalog.myStoreOrEmpty.id,
           title: '',
           kind: _kind,
           type: _type,
           value: 0,
         );
-    cubit.save(
+    setState(() => _saving = true);
+    final err = await cubit.save(
       base.copyWith(
         title: _title.text.trim(),
         kind: _kind,
@@ -304,25 +317,44 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
         active: true,
       ),
     );
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (err != null) {
+      messenger.showSnackBar(SnackBar(content: Text(err)));
+      return;
+    }
+    messenger.showSnackBar(
       SnackBar(
         content: Text(
           'Promoción "${_title.text.trim()}" guardada. Tus clientes ya la ven.',
         ),
       ),
     );
+    context.read<ProductCubit>().loadProducts();
+    context.pop();
+  }
+
+  Future<void> _delete() async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _saving = true);
+    final err = await context.read<PromotionsCubit>().delete(widget.initial!.id);
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (err != null) {
+      messenger.showSnackBar(SnackBar(content: Text(err)));
+      return;
+    }
+    context.read<ProductCubit>().loadProducts();
+    messenger.showSnackBar(const SnackBar(content: Text('Promoción eliminada')));
     context.pop();
   }
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final catalog = context.watch<ProductCubit>().state;
-    final products = catalog is ProductLoaded
-        ? catalog.products
-              .where((p) => p.storeId == SellerMock.store.id)
-              .toList()
-        : <ProductEntity>[];
+    final products = [
+      for (final sp in context.watch<SellerProductsCubit>().state.items) sp.product,
+    ];
     final value = double.tryParse(_value.text) ?? 0;
     final sample = products
         .where((p) => _products.isEmpty || _products.contains(p.id))
@@ -350,10 +382,7 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
           if (widget.initial != null)
             IconButton(
               tooltip: 'Eliminar promoción',
-              onPressed: () {
-                context.read<PromotionsCubit>().delete(widget.initial!.id);
-                context.pop();
-              },
+              onPressed: _saving ? null : _delete,
               icon: const Icon(
                 Icons.delete_outline_rounded,
                 color: AppColors.danger,
@@ -568,7 +597,7 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
             ],
             const SizedBox(height: 24),
             FilledButton(
-              onPressed: _save,
+              onPressed: _saving ? null : _save,
               child: const Text('Guardar promoción'),
             ),
           ],

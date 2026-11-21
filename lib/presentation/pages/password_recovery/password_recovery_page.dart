@@ -54,15 +54,13 @@ class _RecoveryViewState extends State<_RecoveryView> {
       listener: (context, state) {
         setState(() {
           _error = state is PasswordRecoveryFailure ? state.message : null;
-          if (state is PasswordRecoveryCodeSent) {
+          if (state is PasswordRecoveryCodeSent) _step = _Step.code;
+          // Si el servidor rechaza el código, se vuelve a pedir.
+          if (state is PasswordRecoveryFailure &&
+              _step == _Step.password &&
+              state.message.toLowerCase().contains('código')) {
             _step = _Step.code;
-            final code = context.read<PasswordRecoveryCubit>().demoCode;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                duration: const Duration(seconds: 8),
-                content: Text('Modo demo: tu código es $code'),
-              ),
-            );
+            _code.clear();
           }
           if (state is PasswordRecoveryCodeVerified) _step = _Step.password;
           if (state is PasswordRecoverySuccess) _step = _Step.done;
@@ -74,7 +72,7 @@ class _RecoveryViewState extends State<_RecoveryView> {
         final (title, subtitle) = switch (_step) {
           _Step.email => (
             '¿Olvidaste tu contraseña?',
-            'Escribe tu correo institucional y te enviaremos un código.',
+            'Escribe el correo de tu cuenta y te enviaremos un código.',
           ),
           _Step.code => (
             'Revisa tu correo',
@@ -82,7 +80,7 @@ class _RecoveryViewState extends State<_RecoveryView> {
           ),
           _Step.password => (
             'Crea una nueva contraseña',
-            'Usa mayúsculas, minúsculas y números.',
+            'Mínimo 8 caracteres, con letras y números.',
           ),
           _Step.done => (
             '¡Listo!',
