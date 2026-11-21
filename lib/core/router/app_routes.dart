@@ -39,7 +39,6 @@ class AppRoutes {
   static const profile = '/profile';
   static const editProfile = '/profile/edit';
   static const addresses = '/addresses';
-  static const addAddress = '/addresses/new';
   static const mapAddress = '/addresses/map';
   static const paymentMethods = '/payment-methods';
   static const settings = '/settings';
