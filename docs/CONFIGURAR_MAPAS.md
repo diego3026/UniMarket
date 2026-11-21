@@ -8,8 +8,8 @@ El proyecto ya trae todo el código preparado; solo falta crear la clave y pegar
 
 ## 1. Crear el proyecto y la clave en Google Cloud
 
-1. Entra a <https://console.cloud.google.com/> con tu cuenta de Google.
-2. Crea un proyecto (por ejemplo `unimarket`).
+1. Entra a <https://console.cloud.google.com/> con **unimarketdev@gmail.com**.
+2. Usa el mismo proyecto `UniMarket` que creaste para el correo (Gmail API) o crea uno nuevo.
 3. **Facturación → Vincular una cuenta de facturación.** Google la exige aunque el uso sea gratis.
 4. **APIs y servicios → Biblioteca** y habilita:
    - *Maps SDK for Android*
@@ -22,14 +22,20 @@ El proyecto ya trae todo el código preparado; solo falta crear la clave y pegar
 En la clave recién creada:
 
 - **Restricciones de aplicación → Apps para Android → Agregar:**
-  - Nombre del paquete: `com.example.test_app` (es el `applicationId` actual en
-    `android/app/build.gradle.kts`; si lo cambias, cámbialo también aquí).
+  - Nombre del paquete: `com.unimarketdev.app` (el `applicationId` de
+    `android/app/build.gradle.kts`).
   - Huella SHA-1 de depuración. En una terminal dentro de la carpeta `android/`:
     ```bash
     ./gradlew signingReport
     ```
     En Windows: `gradlew.bat signingReport`. Copia la línea `SHA1` de la variante `debug`.
 - **Restricciones de API:** marca solo las APIs que habilitaste.
+
+Para iOS crea una **segunda** clave con *Restricciones de aplicación → Apps para iOS* y el
+bundle ID `com.unimarketdev.app`. Así, si alguien saca la clave de una app, no le sirve en la otra.
+
+Cuando publiques en Play Store, agrega también la huella SHA-1 de la firma de **release**
+(Play Console → Configuración → Integridad de la app) a la clave de Android.
 
 Para la web crea **otra** clave restringida por *Referentes HTTP* (por ejemplo
 `http://localhost:*/*` mientras desarrollas).

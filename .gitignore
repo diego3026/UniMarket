@@ -69,3 +69,4 @@ coverage/
 # API keys locales (Google Maps en iOS)
 ios/Flutter/Secrets.xcconfig
 *.iml
+.idea/
