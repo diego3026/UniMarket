@@ -46,7 +46,7 @@ class AppPreferencesController extends ChangeNotifier {
         preferences.getBool(_kKeepSearchHistory) ?? keepSearchHistory;
     personalizedRecommendations =
         preferences.getBool(_kPersonalizedRecommendations) ??
-            personalizedRecommendations;
+        personalizedRecommendations;
     languageCode = preferences.getString(_kLanguage) ?? languageCode;
     _searchHistory
       ..clear()
@@ -98,7 +98,9 @@ class AppPreferencesController extends ChangeNotifier {
       return;
     }
 
-    _searchHistory.removeWhere((item) => item.toLowerCase() == cleaned.toLowerCase());
+    _searchHistory.removeWhere(
+      (item) => item.toLowerCase() == cleaned.toLowerCase(),
+    );
     _searchHistory.insert(0, cleaned);
     if (_searchHistory.length > 8) {
       _searchHistory.removeRange(8, _searchHistory.length);

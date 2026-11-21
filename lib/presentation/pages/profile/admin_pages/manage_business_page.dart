@@ -1,3 +1,5 @@
+import 'package:unimarket/core/utils/formatters.dart';
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:unimarket/core/injection_container.dart';
@@ -12,12 +14,11 @@ class ManageBusinessPage extends StatelessWidget {
     return BlocProvider(
       create: (context) => sl<AdminBusinessesCubit>()..loadBusinesses(),
       child: Scaffold(
-        backgroundColor: Colors.white,
         appBar: AppBar(
           title: const Text('Gestionar Emprendimientos'),
           backgroundColor: Colors.white,
           elevation: 0,
-          foregroundColor: Colors.black,
+          foregroundColor: AppColors.textPrimary,
         ),
         body: BlocConsumer<AdminBusinessesCubit, AdminBusinessesState>(
           listener: (context, state) {
@@ -25,7 +26,7 @@ class ManageBusinessPage extends StatelessWidget {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.message),
-                  backgroundColor: Colors.red,
+                  backgroundColor: AppColors.danger,
                 ),
               );
             }
@@ -46,12 +47,15 @@ class ManageBusinessPage extends StatelessWidget {
                       Icon(
                         Icons.business_center,
                         size: 64,
-                        color: Colors.grey[300],
+                        color: AppColors.border,
                       ),
                       const SizedBox(height: 16),
                       Text(
                         'No hay emprendimientos',
-                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -78,7 +82,9 @@ class ManageBusinessPage extends StatelessWidget {
   }
 
   Widget _buildBusinessCard(BuildContext context, AdminBusinessModel business) {
-    Color statusColor = business.status == 'Activo' ? Colors.green : Colors.red;
+    Color statusColor = business.status == 'Activo'
+        ? AppColors.success
+        : AppColors.danger;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -86,7 +92,7 @@ class ManageBusinessPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,12 +109,15 @@ class ManageBusinessPage extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     Text(
                       'Propietario: ${business.owner}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -119,7 +128,7 @@ class ManageBusinessPage extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -145,7 +154,7 @@ class ManageBusinessPage extends StatelessWidget {
           const SizedBox(height: 12),
           Chip(
             label: Text(business.category),
-            backgroundColor: const Color(0xFF4B2AAD).withOpacity(0.1),
+            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
           ),
           const SizedBox(height: 12),
           Row(
@@ -157,7 +166,7 @@ class ManageBusinessPage extends StatelessWidget {
                   icon: const Icon(Icons.visibility, size: 16),
                   label: const Text('Ver'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF4B2AAD),
+                    foregroundColor: AppColors.primary,
                   ),
                 ),
               ),
@@ -176,8 +185,8 @@ class ManageBusinessPage extends StatelessWidget {
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: business.status == 'Activo'
-                        ? Colors.red
-                        : Colors.green,
+                        ? AppColors.danger
+                        : AppColors.success,
                   ),
                 ),
               ),
@@ -196,10 +205,13 @@ class ManageBusinessPage extends StatelessWidget {
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF4B2AAD),
+            color: AppColors.primary,
           ),
         ),
-        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+        Text(
+          label,
+          style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+        ),
       ],
     );
   }
@@ -221,10 +233,7 @@ class ManageBusinessPage extends StatelessWidget {
             _buildDetailRow('Productos:', '${business.products}'),
             _buildDetailRow('Ventas:', '${business.sales}'),
             _buildDetailRow('Rating:', '${business.rating} ⭐'),
-            _buildDetailRow(
-              'Ingresos:',
-              '\$${business.revenue.toStringAsFixed(2)}',
-            ),
+            _buildDetailRow('Ingresos:', formatCop(business.revenue)),
             _buildDetailRow('Estado:', business.status),
           ],
         ),
@@ -242,7 +251,10 @@ class ManageBusinessPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
         Text(
           value,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
@@ -268,7 +280,7 @@ class ManageBusinessPage extends StatelessWidget {
               ? 'Emprendimiento suspendido'
               : 'Emprendimiento activado',
         ),
-        backgroundColor: Colors.green,
+        backgroundColor: AppColors.success,
       ),
     );
   }

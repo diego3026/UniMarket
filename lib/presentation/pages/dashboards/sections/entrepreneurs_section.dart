@@ -1,3 +1,5 @@
+import 'package:unimarket/core/utils/formatters.dart';
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class EntrepreneursSection extends StatelessWidget {
@@ -28,7 +30,7 @@ class EntrepreneursSection extends StatelessWidget {
                       child: _buildOverviewCard(
                         'Total',
                         '45',
-                        Colors.blue,
+                        AppColors.primary,
                         Icons.store,
                       ),
                     ),
@@ -37,7 +39,7 @@ class EntrepreneursSection extends StatelessWidget {
                       child: _buildOverviewCard(
                         'Activos',
                         '38',
-                        Colors.green,
+                        AppColors.success,
                         Icons.check_circle,
                       ),
                     ),
@@ -46,7 +48,7 @@ class EntrepreneursSection extends StatelessWidget {
                       child: _buildOverviewCard(
                         'Pendientes',
                         '7',
-                        Colors.orange,
+                        AppColors.warning,
                         Icons.hourglass_bottom,
                       ),
                     ),
@@ -78,11 +80,13 @@ class EntrepreneursSection extends StatelessWidget {
                       entrepreneurName: 'Emprendimiento ${index + 1}',
                       ownerName: 'Diego Oñate ${index + 1}',
                       email: 'owner${index + 1}@uni.edu.co',
-                      totalSales: '\$${(1000 * (index + 1))}',
+                      totalSales: formatCop(1000000 * (index + 1)),
                       productsCount: 10 + (index * 2),
                       rating: 4.5 - (index * 0.1),
                       status: index % 3 == 0 ? 'Pendiente' : 'Activo',
-                      statusColor: index % 3 == 0 ? Colors.orange : Colors.green,
+                      statusColor: index % 3 == 0
+                          ? AppColors.warning
+                          : AppColors.success,
                     );
                   },
                 ),
@@ -108,7 +112,7 @@ class EntrepreneursSection extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6),
         ],
       ),
       child: Column(
@@ -122,7 +126,10 @@ class EntrepreneursSection extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(fontSize: 11, color: Colors.grey),
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+            ),
           ),
         ],
       ),
@@ -145,9 +152,9 @@ class EntrepreneursSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 4),
         ],
       ),
       child: Column(
@@ -160,10 +167,10 @@ class EntrepreneursSection extends StatelessWidget {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: Colors.purple.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.store, color: Colors.purple),
+                child: const Icon(Icons.store, color: AppColors.primary),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -179,15 +186,21 @@ class EntrepreneursSection extends StatelessWidget {
                     ),
                     Text(
                       ownerName,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -206,7 +219,10 @@ class EntrepreneursSection extends StatelessWidget {
           // Email
           Text(
             email,
-            style: const TextStyle(fontSize: 11, color: Colors.grey),
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: 10),
 
@@ -214,9 +230,23 @@ class EntrepreneursSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildStatItem('Ventas', totalSales, Colors.green),
-              _buildStatItem('Productos', '$productsCount', Colors.blue),
-              _buildStatItem('Calificación', '$rating ⭐', Colors.orange),
+              Expanded(
+                child: _buildStatItem('Ventas', totalSales, AppColors.success),
+              ),
+              Expanded(
+                child: _buildStatItem(
+                  'Productos',
+                  '$productsCount',
+                  AppColors.primary,
+                ),
+              ),
+              Expanded(
+                child: _buildStatItem(
+                  'Calificación',
+                  '$rating ⭐',
+                  AppColors.warning,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -242,7 +272,7 @@ class EntrepreneursSection extends StatelessWidget {
                   label: const Text('Editar'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    backgroundColor: Colors.purple,
+                    backgroundColor: AppColors.primary,
                   ),
                 ),
               ),
@@ -263,7 +293,7 @@ class EntrepreneursSection extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           label,
-          style: const TextStyle(fontSize: 10, color: Colors.grey),
+          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
         ),
       ],
     );

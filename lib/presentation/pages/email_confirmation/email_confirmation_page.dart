@@ -1,11 +1,12 @@
+import 'package:unimarket/constants/app_colors.dart';
+import 'package:unimarket/core/router/app_routes.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../viewmodels/email_confirmation/email_confirmation_cubit.dart';
 import '../../viewmodels/email_confirmation/email_confirmation_state.dart';
 import 'package:unimarket/core/injection_container.dart';
-import 'package:unimarket/presentation/pages/login/login_page.dart';
-import '../../viewmodels/login/login_cubit.dart';
 import 'package:unimarket/core/utils/notification_helper.dart';
 
 class EmailConfirmationPage extends StatelessWidget {
@@ -15,7 +16,6 @@ class EmailConfirmationPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       body: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 400),
@@ -47,13 +47,13 @@ class EmailConfirmationPage extends StatelessWidget {
                       width: 120,
                       height: 120,
                       decoration: BoxDecoration(
-                        color: Colors.green.shade50,
+                        color: AppColors.successLight,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.mark_email_read_outlined,
                         size: 60,
-                        color: Colors.green,
+                        color: AppColors.success,
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -62,7 +62,7 @@ class EmailConfirmationPage extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -71,7 +71,7 @@ class EmailConfirmationPage extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 18,
-                        color: Colors.black54,
+                        color: AppColors.textSecondary,
                         height: 1.5,
                       ),
                     ),
@@ -82,17 +82,10 @@ class EmailConfirmationPage extends StatelessWidget {
                       child: ElevatedButton(
                         onPressed: () {
                           // Navegar a login
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(
-                              builder: (_) => BlocProvider(
-                                create: (_) => sl<LoginCubit>(),
-                                child: const LoginPage(),
-                              ),
-                            ),
-                          );
+                          context.go(AppRoutes.login);
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade600,
+                          backgroundColor: AppColors.primary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -113,15 +106,15 @@ class EmailConfirmationPage extends StatelessWidget {
                       onPressed: isLoading
                           ? null
                           : () => context
-                              .read<EmailConfirmationCubit>()
-                              .resendEmail(email),
+                                .read<EmailConfirmationCubit>()
+                                .resendEmail(email),
                       child: Text(
                         isLoading
                             ? 'Reenviando...'
                             : '¿No recibiste el correo? Reenviar',
                         style: const TextStyle(
                           fontSize: 16,
-                          color: Colors.blue,
+                          color: AppColors.primary,
                         ),
                       ),
                     ),

@@ -1,3 +1,4 @@
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class UsersManagementSection extends StatefulWidget {
@@ -35,7 +36,7 @@ class _UsersManagementSectionState extends State<UsersManagementSection> {
                       child: _buildStatCard(
                         'Total Usuarios',
                         '234',
-                        Colors.blue,
+                        AppColors.primary,
                         Icons.people,
                       ),
                     ),
@@ -44,7 +45,7 @@ class _UsersManagementSectionState extends State<UsersManagementSection> {
                       child: _buildStatCard(
                         'Emprendedores',
                         '45',
-                        Colors.purple,
+                        AppColors.primary,
                         Icons.store,
                       ),
                     ),
@@ -53,7 +54,7 @@ class _UsersManagementSectionState extends State<UsersManagementSection> {
                       child: _buildStatCard(
                         'Consumidores',
                         '189',
-                        Colors.green,
+                        AppColors.success,
                         Icons.shopping_cart,
                       ),
                     ),
@@ -85,14 +86,20 @@ class _UsersManagementSectionState extends State<UsersManagementSection> {
                       }),
                       const SizedBox(width: 8),
                       _buildFilterChip(
-                          'Consumidores', _selectedFilter == 'Consumidores', () {
-                        setState(() => _selectedFilter = 'Consumidores');
-                      }),
+                        'Consumidores',
+                        _selectedFilter == 'Consumidores',
+                        () {
+                          setState(() => _selectedFilter = 'Consumidores');
+                        },
+                      ),
                       const SizedBox(width: 8),
                       _buildFilterChip(
-                          'Emprendedores', _selectedFilter == 'Emprendedores', () {
-                        setState(() => _selectedFilter = 'Emprendedores');
-                      }),
+                        'Emprendedores',
+                        _selectedFilter == 'Emprendedores',
+                        () {
+                          setState(() => _selectedFilter = 'Emprendedores');
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -121,8 +128,8 @@ class _UsersManagementSectionState extends State<UsersManagementSection> {
                     final roles = ['Consumidor', 'Emprendedor', 'Consumidor'];
                     final role = roles[index % roles.length];
                     final roleColor = role == 'Consumidor'
-                        ? Colors.blue
-                        : Colors.purple;
+                        ? AppColors.primary
+                        : AppColors.primary;
 
                     return _buildUserListItem(
                       name: 'Usuario ${index + 1}',
@@ -156,7 +163,7 @@ class _UsersManagementSectionState extends State<UsersManagementSection> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6),
         ],
       ),
       child: Column(
@@ -170,7 +177,10 @@ class _UsersManagementSectionState extends State<UsersManagementSection> {
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(fontSize: 10, color: Colors.grey),
+            style: const TextStyle(
+              fontSize: 10,
+              color: AppColors.textSecondary,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -187,11 +197,11 @@ class _UsersManagementSectionState extends State<UsersManagementSection> {
       label: Text(label),
       selected: isSelected,
       onSelected: (_) => onPressed(),
-      backgroundColor: Colors.grey[100],
-      selectedColor: Colors.purple.withOpacity(0.2),
+      backgroundColor: AppColors.surfaceMuted,
+      selectedColor: AppColors.primary.withValues(alpha: 0.2),
       labelStyle: TextStyle(
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        color: isSelected ? Colors.purple : Colors.black,
+        color: isSelected ? AppColors.primary : AppColors.textPrimary,
       ),
     );
   }
@@ -210,9 +220,9 @@ class _UsersManagementSectionState extends State<UsersManagementSection> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 4),
         ],
       ),
       child: Column(
@@ -223,7 +233,7 @@ class _UsersManagementSectionState extends State<UsersManagementSection> {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: roleColor.withOpacity(0.1),
+                  color: roleColor.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.person, color: roleColor),
@@ -242,7 +252,10 @@ class _UsersManagementSectionState extends State<UsersManagementSection> {
                     ),
                     Text(
                       email,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -251,7 +264,7 @@ class _UsersManagementSectionState extends State<UsersManagementSection> {
                 width: 10,
                 height: 10,
                 decoration: BoxDecoration(
-                  color: isActive ? Colors.green : Colors.grey,
+                  color: isActive ? AppColors.success : AppColors.textSecondary,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -262,9 +275,12 @@ class _UsersManagementSectionState extends State<UsersManagementSection> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
-                  color: roleColor.withOpacity(0.1),
+                  color: roleColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -278,7 +294,10 @@ class _UsersManagementSectionState extends State<UsersManagementSection> {
               ),
               Text(
                 'Se unió $joinDate',
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -303,7 +322,7 @@ class _UsersManagementSectionState extends State<UsersManagementSection> {
                   label: const Text('Editar'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    backgroundColor: Colors.blue,
+                    backgroundColor: AppColors.primary,
                   ),
                 ),
               ),

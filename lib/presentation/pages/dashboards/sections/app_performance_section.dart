@@ -1,3 +1,5 @@
+import 'package:unimarket/core/utils/formatters.dart';
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class AppPerformanceSection extends StatelessWidget {
@@ -29,7 +31,7 @@ class AppPerformanceSection extends StatelessWidget {
                         'Descargas',
                         '12,450',
                         '+15%',
-                        Colors.blue,
+                        AppColors.primary,
                         Icons.download,
                       ),
                     ),
@@ -39,7 +41,7 @@ class AppPerformanceSection extends StatelessWidget {
                         'Usuarios Activos',
                         '8,934',
                         '+8%',
-                        Colors.green,
+                        AppColors.success,
                         Icons.people,
                       ),
                     ),
@@ -53,7 +55,7 @@ class AppPerformanceSection extends StatelessWidget {
                         'Transacciones',
                         '3,456',
                         '+22%',
-                        Colors.purple,
+                        AppColors.primary,
                         Icons.credit_card,
                       ),
                     ),
@@ -61,9 +63,9 @@ class AppPerformanceSection extends StatelessWidget {
                     Expanded(
                       child: _buildKPICard(
                         'Ingresos Totales',
-                        '\$234,567',
+                        formatCop(234567000),
                         '+12%',
-                        Colors.orange,
+                        AppColors.warning,
                         Icons.trending_up,
                       ),
                     ),
@@ -207,9 +209,9 @@ class AppPerformanceSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6),
         ],
       ),
       child: Column(
@@ -222,7 +224,7 @@ class AppPerformanceSection extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: AppColors.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -230,7 +232,7 @@ class AppPerformanceSection extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: Colors.green,
+                    color: AppColors.success,
                   ),
                 ),
               ),
@@ -242,7 +244,13 @@ class AppPerformanceSection extends StatelessWidget {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -262,9 +270,9 @@ class AppPerformanceSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 4),
         ],
       ),
       child: Column(
@@ -287,7 +295,10 @@ class AppPerformanceSection extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       description,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -295,7 +306,7 @@ class AppPerformanceSection extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -303,7 +314,7 @@ class AppPerformanceSection extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: Colors.blue,
+                    color: AppColors.primary,
                   ),
                 ),
               ),
@@ -335,13 +346,13 @@ class AppPerformanceSection extends StatelessWidget {
             child: LinearProgressIndicator(
               value: progress / 100,
               minHeight: 6,
-              backgroundColor: Colors.grey[200],
+              backgroundColor: AppColors.border,
               valueColor: AlwaysStoppedAnimation<Color>(
                 progress > 75
-                    ? Colors.green
+                    ? AppColors.success
                     : progress > 50
-                    ? Colors.orange
-                    : Colors.blue,
+                    ? AppColors.warning
+                    : AppColors.primary,
               ),
             ),
           ),
@@ -356,7 +367,7 @@ class AppPerformanceSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
@@ -390,7 +401,10 @@ class AppPerformanceSection extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   'Duración: $duration',
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -399,8 +413,8 @@ class AppPerformanceSection extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: status == 'Finalizada'
-                  ? Colors.red.withOpacity(0.1)
-                  : Colors.green.withOpacity(0.1),
+                  ? AppColors.danger.withValues(alpha: 0.1)
+                  : AppColors.success.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -408,7 +422,9 @@ class AppPerformanceSection extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: status == 'Finalizada' ? Colors.red : Colors.green,
+                color: status == 'Finalizada'
+                    ? AppColors.danger
+                    : AppColors.success,
               ),
             ),
           ),
@@ -435,7 +451,7 @@ class AppPerformanceSection extends StatelessWidget {
                 (index) => Icon(
                   Icons.star,
                   size: 12,
-                  color: index < rating ? Colors.orange : Colors.grey[300],
+                  color: index < rating ? AppColors.warning : AppColors.border,
                 ),
               ),
             ),
@@ -447,8 +463,10 @@ class AppPerformanceSection extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: percentage / 100,
                 minHeight: 8,
-                backgroundColor: Colors.grey[200],
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.orange),
+                backgroundColor: AppColors.border,
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  AppColors.warning,
+                ),
               ),
             ),
           ),
@@ -457,7 +475,10 @@ class AppPerformanceSection extends StatelessWidget {
             width: 40,
             child: Text(
               '($count)',
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
               textAlign: TextAlign.right,
             ),
           ),
@@ -479,9 +500,9 @@ class AppPerformanceSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 4),
         ],
       ),
       child: Row(
@@ -490,10 +511,10 @@ class AppPerformanceSection extends StatelessWidget {
             width: 45,
             height: 45,
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
+              color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.shopping_bag, color: Colors.blue),
+            child: const Icon(Icons.shopping_bag, color: AppColors.primary),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -512,12 +533,15 @@ class AppPerformanceSection extends StatelessWidget {
                   children: [
                     Text(
                       '$sales ventas',
-                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Row(
                       children: [
-                        Icon(Icons.star, size: 12, color: Colors.orange),
+                        Icon(Icons.star, size: 12, color: AppColors.warning),
                         const SizedBox(width: 2),
                         Text(
                           '$rating',
@@ -537,8 +561,8 @@ class AppPerformanceSection extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: isPositiveTrend
-                  ? Colors.green.withOpacity(0.1)
-                  : Colors.red.withOpacity(0.1),
+                  ? AppColors.success.withValues(alpha: 0.1)
+                  : AppColors.danger.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -546,7 +570,7 @@ class AppPerformanceSection extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: isPositiveTrend ? Colors.green : Colors.red,
+                color: isPositiveTrend ? AppColors.success : AppColors.danger,
               ),
             ),
           ),

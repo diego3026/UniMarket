@@ -4,10 +4,7 @@ class AuthUser {
   final String email;
   final UserRole role;
 
-  AuthUser({
-    required this.email,
-    this.role = UserRole.consumer,
-  });
+  AuthUser({required this.email, this.role = UserRole.consumer});
 }
 
 abstract class AuthState {}

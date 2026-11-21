@@ -8,10 +8,10 @@ class AddAddressViewModel extends ChangeNotifier {
   bool isDefault;
 
   AddAddressViewModel({Address? initial})
-      : mainAddress = initial?.mainAddress ?? '',
-        secondaryAddress = initial?.secondaryAddress ?? '',
-        description = '',
-        isDefault = initial?.isDefault ?? false;
+    : mainAddress = initial?.mainAddress ?? '',
+      secondaryAddress = initial?.secondaryAddress ?? '',
+      description = '',
+      isDefault = initial?.isDefault ?? false;
 
   void setMain(String v) {
     mainAddress = v;

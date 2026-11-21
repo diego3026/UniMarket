@@ -1,3 +1,5 @@
+import 'package:unimarket/core/utils/formatters.dart';
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class EntrepreneurDashboard extends StatefulWidget {
@@ -32,7 +34,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
                     child: _buildActionButton(
                       'Agregar producto',
                       Icons.add,
-                      Colors.blue,
+                      AppColors.seller,
                       () {},
                     ),
                   ),
@@ -41,7 +43,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
                     child: _buildActionButton(
                       'Ver órdenes',
                       Icons.shopping_bag,
-                      Colors.orange,
+                      AppColors.warning,
                       () {},
                     ),
                   ),
@@ -81,7 +83,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: isSelected ? const Color(0xFF4B2AAD) : Colors.transparent,
+              color: isSelected ? AppColors.seller : Colors.transparent,
               width: 3,
             ),
           ),
@@ -91,7 +93,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            color: isSelected ? const Color(0xFF4B2AAD) : Colors.grey,
+            color: isSelected ? AppColors.seller : AppColors.textSecondary,
           ),
         ),
       ),
@@ -163,7 +165,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
               return _buildInventoryItem(
                 'Producto ${index + 1}',
                 '${50 - (index * 5)} unidades',
-                '\$${(index + 1) * 25}.00',
+                formatCop((index + 1) * 25 * 1000),
               );
             },
           ),
@@ -191,7 +193,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
               return _buildHistoryItem(
                 'Venta #${1000 + index}',
                 'Cliente ${(index % 8) + 1}',
-                '\$${(index + 1) * 45}.00',
+                formatCop((index + 1) * 45 * 1000),
                 '2026-05-${(index % 28) + 1}',
               );
             },
@@ -216,7 +218,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.blue[50],
+              color: AppColors.sellerLight,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -238,7 +240,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
                         ...List.generate(5, (i) {
                           return Icon(
                             Icons.star,
-                            color: i < 4 ? Colors.amber : Colors.grey[300],
+                            color: i < 4 ? AppColors.accent : AppColors.border,
                             size: 18,
                           );
                         }),
@@ -316,9 +318,9 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(
           children: [
@@ -352,7 +354,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4),
         ],
       ),
       child: Row(
@@ -361,10 +363,10 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
             width: 45,
             height: 45,
             decoration: BoxDecoration(
-              color: Colors.purple[100],
+              color: AppColors.sellerLight,
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.person, color: Colors.purple[700]),
+            child: Icon(Icons.person, color: AppColors.primaryDark),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -380,24 +382,31 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
                 ),
                 Text(
                   email,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 4),
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     ...List.generate(5, (i) {
                       return Icon(
                         Icons.star,
                         color: i < rating.toInt()
-                            ? Colors.amber
-                            : Colors.grey[300],
+                            ? AppColors.accent
+                            : AppColors.border,
                         size: 12,
                       );
                     }),
                     const SizedBox(width: 4),
                     Text(
                       rating.toString(),
-                      style: const TextStyle(fontSize: 10, color: Colors.grey),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -406,7 +415,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
           ),
           Chip(
             label: Text(purchases, style: const TextStyle(fontSize: 12)),
-            backgroundColor: Colors.blue[50],
+            backgroundColor: AppColors.sellerLight,
           ),
         ],
       ),
@@ -421,7 +430,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4),
         ],
       ),
       child: Row(
@@ -430,10 +439,10 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
             width: 45,
             height: 45,
             decoration: BoxDecoration(
-              color: Colors.orange[100],
+              color: AppColors.warningLight,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(Icons.inventory_2, color: Colors.orange[700]),
+            child: Icon(Icons.inventory_2, color: AppColors.warning),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -449,7 +458,10 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
                 ),
                 Text(
                   stock,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -476,7 +488,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4),
         ],
       ),
       child: Row(
@@ -485,10 +497,10 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
             width: 45,
             height: 45,
             decoration: BoxDecoration(
-              color: Colors.green[100],
+              color: AppColors.successLight,
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.check_circle, color: Colors.green[700]),
+            child: Icon(Icons.check_circle, color: AppColors.success),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -504,7 +516,10 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
                 ),
                 Text(
                   '$client • $date',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -514,7 +529,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 12,
-              color: Colors.green,
+              color: AppColors.success,
             ),
           ),
         ],
@@ -534,7 +549,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4),
         ],
       ),
       child: Column(
@@ -550,14 +565,19 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
               ...List.generate(5, (i) {
                 return Icon(
                   Icons.star,
-                  color: i < rating.toInt() ? Colors.amber : Colors.grey[300],
+                  color: i < rating.toInt()
+                      ? AppColors.accent
+                      : AppColors.border,
                   size: 16,
                 );
               }),
               const SizedBox(width: 8),
               Text(
                 '$rating ($reviewCount opiniones)',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -578,7 +598,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4),
         ],
       ),
       child: Column(
@@ -590,10 +610,10 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: Colors.blue[100],
+                  color: AppColors.sellerLight,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.person, color: Colors.blue[700]),
+                child: Icon(Icons.person, color: AppColors.seller),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -609,7 +629,10 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
                     ),
                     Text(
                       email,
-                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -620,12 +643,15 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
+              color: AppColors.surfaceMuted,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               purchase,
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -635,7 +661,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
               ...List.generate(5, (i) {
                 return GestureDetector(
                   onTap: () {},
-                  child: Icon(Icons.star, color: Colors.grey[300], size: 24),
+                  child: Icon(Icons.star, color: AppColors.border, size: 24),
                 );
               }),
             ],
@@ -645,7 +671,7 @@ class _EntrepreneurDashboardState extends State<EntrepreneurDashboard> {
             width: double.infinity,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4B2AAD),
+                backgroundColor: AppColors.seller,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 10),
               ),

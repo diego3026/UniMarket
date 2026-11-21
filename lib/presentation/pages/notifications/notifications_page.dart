@@ -1,3 +1,4 @@
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:unimarket/core/injection_container.dart';
@@ -54,7 +55,7 @@ class _NotificationsPageState extends State<NotificationsPage>
             style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
           ),
           backgroundColor: isDarkMode ? const Color(0xFF1B1B1B) : Colors.white,
-          foregroundColor: isDarkMode ? Colors.white : Colors.black,
+          foregroundColor: isDarkMode ? Colors.white : AppColors.textPrimary,
           elevation: 0,
           actions: [
             // Botón para eliminar notificaciones antiguas
@@ -80,7 +81,9 @@ class _NotificationsPageState extends State<NotificationsPage>
                             padding: const EdgeInsets.all(8),
                             child: Icon(
                               Icons.delete_sweep_outlined,
-                              color: isDarkMode ? Colors.white : Colors.black87,
+                              color: isDarkMode
+                                  ? Colors.white
+                                  : AppColors.textPrimary,
                             ),
                           ),
                         ),
@@ -105,11 +108,13 @@ class _NotificationsPageState extends State<NotificationsPage>
                     children: [
                       TabBar(
                         controller: _tabController,
-                        labelColor: isDarkMode ? Colors.white : Colors.black87,
+                        labelColor: isDarkMode
+                            ? Colors.white
+                            : AppColors.textPrimary,
                         unselectedLabelColor: isDarkMode
-                            ? Colors.grey[500]
-                            : Colors.grey[600],
-                        indicatorColor: const Color(0xFF4B2AAD),
+                            ? AppColors.textMuted
+                            : AppColors.textSecondary,
+                        indicatorColor: Theme.of(context).colorScheme.primary,
                         labelStyle: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -144,7 +149,7 @@ class _NotificationsPageState extends State<NotificationsPage>
                     const Icon(
                       Icons.error_outline,
                       size: 64,
-                      color: Colors.red,
+                      color: AppColors.danger,
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -206,7 +211,7 @@ class _NotificationsPageState extends State<NotificationsPage>
                   ? Icons.check_circle_outline
                   : Icons.notifications_off_outlined,
               size: 80,
-              color: isDarkMode ? Colors.grey[600] : Colors.grey[300],
+              color: isDarkMode ? AppColors.textSecondary : AppColors.border,
             ),
             const SizedBox(height: 20),
             Text(
@@ -216,7 +221,9 @@ class _NotificationsPageState extends State<NotificationsPage>
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                color: isDarkMode
+                    ? AppColors.textMuted
+                    : AppColors.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -227,7 +234,7 @@ class _NotificationsPageState extends State<NotificationsPage>
                   : 'Vuelve pronto para actualizaciones',
               style: TextStyle(
                 fontSize: 14,
-                color: isDarkMode ? Colors.grey[500] : Colors.grey[500],
+                color: isDarkMode ? AppColors.textMuted : AppColors.textMuted,
               ),
               textAlign: TextAlign.center,
             ),
@@ -273,15 +280,19 @@ class _NotificationsPageState extends State<NotificationsPage>
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: notification.isRead
-                ? (isDarkMode ? const Color(0xFF1E1E1E) : Colors.grey.shade50)
+                ? (isDarkMode
+                      ? const Color(0xFF1E1E1E)
+                      : AppColors.surfaceMuted)
                 : (isDarkMode
                       ? const Color(0xFF2A2A2A)
-                      : const Color(0xFFFAF5FF)),
+                      : Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.06)),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: notification.isRead
-                  ? (isDarkMode ? Colors.grey[700]! : Colors.grey[200]!)
-                  : color.withOpacity(0.3),
+                  ? (isDarkMode ? AppColors.textSecondary : AppColors.border)
+                  : color.withValues(alpha: 0.3),
               width: 1.5,
             ),
           ),
@@ -296,12 +307,12 @@ class _NotificationsPageState extends State<NotificationsPage>
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [color.withOpacity(0.8), color],
+                        colors: [color.withValues(alpha: 0.8), color],
                       ),
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: [
                         BoxShadow(
-                          color: color.withOpacity(0.3),
+                          color: color.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -329,7 +340,7 @@ class _NotificationsPageState extends State<NotificationsPage>
                                   fontWeight: FontWeight.w700,
                                   color: isDarkMode
                                       ? Colors.white
-                                      : Colors.black87,
+                                      : AppColors.textPrimary,
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -345,7 +356,7 @@ class _NotificationsPageState extends State<NotificationsPage>
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: color.withOpacity(0.5),
+                                      color: color.withValues(alpha: 0.5),
                                       blurRadius: 4,
                                     ),
                                   ],
@@ -362,8 +373,8 @@ class _NotificationsPageState extends State<NotificationsPage>
                             style: TextStyle(
                               fontSize: 13,
                               color: isDarkMode
-                                  ? Colors.grey[400]
-                                  : Colors.grey[600],
+                                  ? AppColors.textMuted
+                                  : AppColors.textSecondary,
                               height: 1.4,
                             ),
                             maxLines: 2,
@@ -383,7 +394,9 @@ class _NotificationsPageState extends State<NotificationsPage>
                     _getTimeAgo(notification.createdAt),
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDarkMode ? Colors.grey[600] : Colors.grey[500],
+                      color: isDarkMode
+                          ? AppColors.textSecondary
+                          : AppColors.textMuted,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -393,7 +406,7 @@ class _NotificationsPageState extends State<NotificationsPage>
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.15),
+                      color: color.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -435,18 +448,18 @@ class _NotificationsPageState extends State<NotificationsPage>
   Color _getNotificationColor(String type) {
     switch (type) {
       case 'order_update':
-        return const Color(0xFF0066FF); // Blue
+        return AppColors.info;
       case 'business_update':
-        return const Color(0xFF00AA00); // Green
+        return AppColors.success;
       case 'consumer_update':
-        return const Color(0xFFFF6B00); // Orange
+        return AppColors.warning;
       case 'promo':
-        return const Color(0xFFFFB300); // Amber
+        return AppColors.accent;
       case 'message':
-        return const Color(0xFFEE4B6B); // Pink
+        return AppColors.danger;
       case 'system':
       default:
-        return const Color(0xFF4B2AAD); // Purple
+        return Theme.of(context).colorScheme.primary; // Purple
     }
   }
 
@@ -510,7 +523,7 @@ class _NotificationsPageState extends State<NotificationsPage>
                 title: Text(
                   'Limpiar notificaciones',
                   style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,
+                    color: isDarkMode ? Colors.white : AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -522,11 +535,15 @@ class _NotificationsPageState extends State<NotificationsPage>
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: isDarkMode
-                            ? Colors.grey[900]
-                            : Colors.blue.shade50,
+                            ? AppColors.textSecondary
+                            : Theme.of(
+                                context,
+                              ).colorScheme.primary.withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: const Color(0xFF4B2AAD).withOpacity(0.3),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Column(
@@ -536,7 +553,7 @@ class _NotificationsPageState extends State<NotificationsPage>
                             children: [
                               Icon(
                                 Icons.info_outline,
-                                color: const Color(0xFF4B2AAD),
+                                color: Theme.of(context).colorScheme.primary,
                                 size: 20,
                               ),
                               const SizedBox(width: 8),
@@ -546,7 +563,7 @@ class _NotificationsPageState extends State<NotificationsPage>
                                   style: TextStyle(
                                     color: isDarkMode
                                         ? Colors.white
-                                        : Colors.black87,
+                                        : AppColors.textPrimary,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -558,7 +575,7 @@ class _NotificationsPageState extends State<NotificationsPage>
                             children: [
                               Icon(
                                 Icons.circle,
-                                color: const Color(0xFF4B2AAD),
+                                color: Theme.of(context).colorScheme.primary,
                                 size: 8,
                               ),
                               const SizedBox(width: 8),
@@ -566,8 +583,8 @@ class _NotificationsPageState extends State<NotificationsPage>
                                 'Notificaciones sin leer: $unreadCount (protegidas)',
                                 style: TextStyle(
                                   color: isDarkMode
-                                      ? Colors.grey[400]
-                                      : Colors.grey[700],
+                                      ? AppColors.textMuted
+                                      : AppColors.textSecondary,
                                   fontSize: 13,
                                 ),
                               ),
@@ -580,7 +597,9 @@ class _NotificationsPageState extends State<NotificationsPage>
                     Text(
                       'Se eliminarán solo las notificaciones que ya has leído. Las notificaciones sin leer se mantendrán protegidas.',
                       style: TextStyle(
-                        color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                        color: isDarkMode
+                            ? AppColors.border
+                            : AppColors.textSecondary,
                         fontSize: 13,
                       ),
                     ),
@@ -592,7 +611,9 @@ class _NotificationsPageState extends State<NotificationsPage>
                     child: Text(
                       'Cancelar',
                       style: TextStyle(
-                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                        color: isDarkMode
+                            ? AppColors.textMuted
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ),
@@ -606,13 +627,13 @@ class _NotificationsPageState extends State<NotificationsPage>
                             content: Text(
                               '$readCount notificación${readCount > 1 ? 'es' : ''} leída${readCount > 1 ? 's' : ''} eliminada${readCount > 1 ? 's' : ''}',
                             ),
-                            backgroundColor: Colors.green.shade600,
+                            backgroundColor: AppColors.success,
                             duration: const Duration(seconds: 2),
                           ),
                         );
                       },
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF4B2AAD),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                       ),
                       child: const Text('Eliminar leídas'),
                     )
@@ -620,8 +641,8 @@ class _NotificationsPageState extends State<NotificationsPage>
                     FilledButton(
                       onPressed: null,
                       style: FilledButton.styleFrom(
-                        backgroundColor: Colors.grey,
-                        disabledBackgroundColor: Colors.grey,
+                        backgroundColor: AppColors.textSecondary,
+                        disabledBackgroundColor: AppColors.textSecondary,
                       ),
                       child: const Text('No hay para eliminar'),
                     ),

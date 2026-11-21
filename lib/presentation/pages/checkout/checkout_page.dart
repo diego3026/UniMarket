@@ -1,26 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:unimarket/core/injection_container.dart';
-import 'package:unimarket/presentation/models/cart_item.dart';
-import 'package:unimarket/presentation/viewmodels/checkout/checkout_cubit.dart';
-import 'package:unimarket/presentation/viewmodels/checkout/checkout_state.dart';
-import 'package:unimarket/presentation/pages/checkout/widgets/address_step_widget.dart';
-import 'package:unimarket/presentation/pages/checkout/widgets/shipping_step_widget.dart';
-import 'package:unimarket/presentation/pages/checkout/widgets/payment_step_widget.dart';
-import 'package:unimarket/presentation/pages/order_confirmation/order_confirmation_page.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../constants/app_colors.dart';
+import '../../../core/router/app_routes.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../data/datasources/mock/market_mock_data.dart';
+import '../../../domain/entities/market_entities.dart';
+import '../../models/cart_item.dart';
+import '../../viewmodels/cart/cart_cubit.dart';
+import '../../viewmodels/market/market_cubits.dart';
+import '../../viewmodels/profile/profile_cubit.dart';
+import '../../viewmodels/profile/profile_state.dart';
+import '../../widgets/ui/app_widgets.dart';
+import '../../widgets/ui/campus_map.dart';
+import '../../widgets/ui/payment_widgets.dart';
+import '../../widgets/ui/product_image.dart';
+
+/// Finalizar compra en una sola pantalla (Figma: "Pedido").
+///
+/// Todo sale de lo que configuró el emprendedor: si hace domicilios, el costo,
+/// dónde se recoge, el tiempo de preparación, qué medios de pago recibe y
+/// qué cupones están activos.
 class CheckoutPage extends StatefulWidget {
-  final List<CartItem> cartItems;
   final String storeId;
   final String storeName;
-  final String userId;
 
   const CheckoutPage({
     super.key,
-    required this.cartItems,
     required this.storeId,
     required this.storeName,
-    required this.userId,
   });
 
   @override
@@ -28,259 +38,651 @@ class CheckoutPage extends StatefulWidget {
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
-  late CheckoutCubit _checkoutCubit;
-  int _currentStep = 0;
+  late FulfillmentMode _mode;
+  String _deliveryPlaceId = 'b8';
+  final _notes = TextEditingController();
+  final _coupon = TextEditingController();
+  CouponResult? _couponResult;
+  PaymentChoice? _payment;
+  bool _showMap = false;
+  bool _paying = false;
 
   @override
   void initState() {
     super.initState();
-    _checkoutCubit = sl<CheckoutCubit>();
-    // Inicializar el checkout
-    _checkoutCubit.initCheckout(
-      userId: widget.userId,
-      storeId: widget.storeId,
-      storeName: widget.storeName,
-      cartItems: widget.cartItems,
-    );
+    final s = context.read<StoreSettingsCubit>().of(widget.storeId);
+    _mode = s.allowsDelivery
+        ? FulfillmentMode.delivery
+        : FulfillmentMode.pickup;
+    final card = context.read<WalletCubit>().state.defaultCard;
+    _payment = s.acceptsNequi
+        ? const PaymentChoice.nequi()
+        : s.acceptsCash
+        ? const PaymentChoice.cash()
+        : (s.acceptsCard && card != null ? PaymentChoice.card(card) : null);
   }
 
   @override
   void dispose() {
-    // No cerrar el cubit aquí, será manejado por BlocProvider
+    _notes.dispose();
+    _coupon.dispose();
     super.dispose();
+  }
+
+  List<CartItem> _items(CartState state) => state is CartLoaded
+      ? state.items.where((i) => i.product.storeId == widget.storeId).toList()
+      : <CartItem>[];
+
+  void _applyCoupon(double subtotal) {
+    final r = context.read<PromotionsCubit>().validateCoupon(
+      _coupon.text,
+      widget.storeId,
+      subtotal,
+    );
+    setState(() => _couponResult = r);
+    FocusScope.of(context).unfocus();
+  }
+
+  Future<void> _pay({
+    required StoreSettings settings,
+    required List<CartItem> items,
+    required double couponDiscount,
+    required double deliveryFee,
+  }) async {
+    if (_payment == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Elige un método de pago para continuar')),
+      );
+      return;
+    }
+    setState(() => _paying = true);
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (!mounted) return;
+    final profile = context.read<ProfileCubit>().state;
+    final order = context.read<MarketOrdersCubit>().place(
+      storeId: widget.storeId,
+      storeName: widget.storeName,
+      customerName: profile is ProfileLoaded ? profile.user.name : 'Cliente',
+      items: items,
+      mode: _mode,
+      placeId: _mode == FulfillmentMode.pickup
+          ? settings.pickupPlaceId
+          : _deliveryPlaceId,
+      notes: _notes.text.trim(),
+      deliveryFee: deliveryFee,
+      coupon: _couponResult?.promotion,
+      couponDiscount: couponDiscount,
+      paymentLabel: _payment!.label(_mode),
+    );
+    context.read<CartCubit>().removeStore(widget.storeId);
+    context.pushReplacement(AppRoutes.orderSuccessPath(order.id));
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<CheckoutCubit>(
-      create: (_) => _checkoutCubit,
-      child: Scaffold(
-        backgroundColor: Colors.grey[50],
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: const Text(
-            'Checkout',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-          ),
-          centerTitle: true,
-        ),
-        body: BlocBuilder<CheckoutCubit, CheckoutState>(
-          builder: (context, state) {
-            // Mostrar indicador de progreso
-            Widget progressIndicator = _buildProgressIndicator(state);
-
-            if (state is CheckoutLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (state is CheckoutError) {
-              return _buildErrorWidget(context, state);
-            }
-
-            if (state is CheckoutStep1Addresses) {
-              return Column(
-                children: [
-                  progressIndicator,
-                  Expanded(
-                    child: AddressStepWidget(
-                      addresses: state.addresses,
-                      selectedAddress: state.selectedAddress,
-                      onAddressSelected: (address) {
-                        context.read<CheckoutCubit>().selectAddress(address);
-                      },
-                      onNext: () {
-                        context.read<CheckoutCubit>().proceedToShipping();
-                      },
-                    ),
-                  ),
-                ],
-              );
-            }
-
-            if (state is CheckoutStep2Shipping) {
-              return Column(
-                children: [
-                  progressIndicator,
-                  Expanded(
-                    child: ShippingStepWidget(
-                      shippingOptions: state.shippingOptions,
-                      selectedShipping: state.selectedShipping,
-                      subtotal: state.subtotal,
-                      address: state.address,
-                      onShippingSelected: (shipping) {
-                        context.read<CheckoutCubit>().selectShipping(shipping);
-                      },
-                      onBack: () {
-                        context.read<CheckoutCubit>().goBackToAddresses();
-                      },
-                      onNext: () {
-                        context.read<CheckoutCubit>().proceedToPayment();
-                      },
-                    ),
-                  ),
-                ],
-              );
-            }
-
-            if (state is CheckoutStep3Payment) {
-              return Column(
-                children: [
-                  progressIndicator,
-                  Expanded(
-                    child: PaymentStepWidget(
-                      address: state.address,
-                      shippingOption: state.shippingOption,
-                      subtotal: state.subtotal,
-                      shippingCost: state.shippingCost,
-                      taxAmount: state.taxAmount,
-                      totalAmount: state.totalAmount,
-                      onBack: () {
-                        context.read<CheckoutCubit>().goBackToShipping();
-                      },
-                      onPayment: (paymentMethod, paymentDetails) {
-                        context.read<CheckoutCubit>().processPayment(
-                          paymentMethod: paymentMethod,
-                          paymentDetails: paymentDetails,
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              );
-            }
-
-            if (state is CheckoutProcessing) {
-              return const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Procesando pago...'),
-                  ],
-                ),
-              );
-            }
-
-            if (state is CheckoutSuccess) {
-              // Navegar a página de confirmación
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (_) => OrderConfirmationPage(order: state.order),
-                  ),
-                  (route) => route.isFirst,
-                );
-              });
-            }
-
-            return const Center(child: Text('Estado desconocido'));
-          },
-        ),
-      ),
+    final t = Theme.of(context).textTheme;
+    final settings = context.watch<StoreSettingsCubit>().of(widget.storeId);
+    final coupons = context.watch<PromotionsCubit>().activeCoupons(
+      widget.storeId,
     );
-  }
 
-  Widget _buildProgressIndicator(CheckoutState state) {
-    int step = 0;
-    if (state is CheckoutStep2Shipping) step = 1;
-    if (state is CheckoutStep3Payment) step = 2;
+    return BlocBuilder<CartCubit, CartState>(
+      builder: (context, cartState) {
+        final items = _items(cartState);
+        if (items.isEmpty && !_paying) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Finalizar compra')),
+            body: EmptyState(
+              icon: Icons.shopping_bag_outlined,
+              title: 'No hay productos de ${widget.storeName}',
+              message: 'Vuelve a la tienda para agregar algo.',
+              actionLabel: 'Ir a la tienda',
+              onAction: () =>
+                  context.pushReplacement(AppRoutes.storePath(widget.storeId)),
+            ),
+          );
+        }
+        final subtotal = items.fold<double>(0, (s, i) => s + i.totalPrice);
+        final savings = items.fold<double>(
+          0,
+          (s, i) => s + (i.product.price - i.product.finalPrice) * i.quantity,
+        );
+        // El cupón se revalida si cambian las cantidades.
+        final coupon = _couponResult?.promotion != null
+            ? context.read<PromotionsCubit>().validateCoupon(
+                _couponResult!.promotion!.code,
+                widget.storeId,
+                subtotal,
+              )
+            : _couponResult;
+        final couponDiscount = coupon?.discount ?? 0;
+        final deliveryFee = _mode == FulfillmentMode.delivery
+            ? settings.deliveryFee
+            : 0.0;
+        final total = subtotal - couponDiscount + deliveryFee;
+        final pickupPlace = MarketMockData.place(settings.pickupPlaceId);
+        final deliveryPlace = MarketMockData.place(_deliveryPlaceId);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-      color: Colors.white,
-      child: Row(
-        children: List.generate(3, (index) {
-          bool isActive = index <= step;
-          bool isDone = index < step;
-          return Expanded(
-            child: Row(
+        return Scaffold(
+          appBar: AppBar(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
+                const Text('Finalizar compra'),
+                Text(widget.storeName, style: t.bodySmall),
+              ],
+            ),
+          ),
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppTheme.pagePadding,
+              4,
+              AppTheme.pagePadding,
+              24,
+            ),
+            children: [
+              // 1. Cómo recibir
+              SegmentedButton<FulfillmentMode>(
+                showSelectedIcon: false,
+                style: SegmentedButton.styleFrom(
+                  selectedBackgroundColor: AppColors.primary,
+                  selectedForegroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                segments: [
+                  ButtonSegment(
+                    value: FulfillmentMode.delivery,
+                    enabled: settings.allowsDelivery,
+                    icon: const Icon(Icons.delivery_dining_rounded),
+                    label: const Text('Domicilio'),
+                  ),
+                  ButtonSegment(
+                    value: FulfillmentMode.pickup,
+                    enabled: settings.allowsPickup,
+                    icon: const Icon(Icons.storefront_rounded),
+                    label: const Text('Ir a recoger'),
+                  ),
+                ],
+                selected: {_mode},
+                onSelectionChanged: (v) => setState(() => _mode = v.first),
+              ),
+              if (!settings.allowsDelivery)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    '${widget.storeName} solo entrega para recoger.',
+                    style: t.bodySmall,
+                  ),
+                ),
+              const SizedBox(height: 16),
+
+              // 2. Dónde
+              if (_mode == FulfillmentMode.delivery)
+                _Section(
+                  title: 'Entregar en',
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isActive
-                              ? const Color(0xFF4B2AAD)
-                              : Colors.grey[300],
-                        ),
-                        child: Center(
-                          child: isDone
-                              ? const Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                  size: 24,
-                                )
-                              : Text(
-                                  '${index + 1}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const _RoundIcon(Icons.place_rounded),
+                        title: Text(deliveryPlace.name),
+                        subtitle: Text(deliveryPlace.hint),
+                        trailing: TextButton(
+                          onPressed: () async {
+                            final p = await showCampusPlacePicker(
+                              context,
+                              title: '¿Dónde te lo llevamos?',
+                              selectedId: _deliveryPlaceId,
+                            );
+                            if (p != null) {
+                              setState(() => _deliveryPlaceId = p.id);
+                            }
+                          },
+                          child: const Text('Cambiar'),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        ['Dirección', 'Envío', 'Pago'][index],
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: isActive
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          color: isActive ? Colors.black : Colors.grey,
+                      TextField(
+                        controller: _notes,
+                        decoration: const InputDecoration(
+                          hintText: 'Salón, piso o indicaciones (opcional)',
+                          prefixIcon: Icon(Icons.edit_note_rounded),
                         ),
-                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 10),
+                      _InfoLine(
+                        icon: Icons.schedule_rounded,
+                        text:
+                            'Llega en ~${settings.prepMinutes + 10} min · Domicilio ${deliveryFee == 0 ? 'gratis' : formatCop(deliveryFee)}',
+                      ),
+                    ],
+                  ),
+                )
+              else
+                _Section(
+                  title: 'Recoger en',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const _RoundIcon(Icons.storefront_rounded),
+                        title: Text(pickupPlace.name),
+                        subtitle: Text(
+                          settings.pickupNotes.isEmpty
+                              ? pickupPlace.hint
+                              : settings.pickupNotes,
+                        ),
+                      ),
+                      _InfoLine(
+                        icon: Icons.timer_outlined,
+                        text:
+                            'Listo para recoger en ~${settings.prepMinutes} min. Te avisamos cuando esté listo.',
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton.icon(
+                          onPressed: () => setState(() => _showMap = !_showMap),
+                          icon: Icon(
+                            _showMap
+                                ? Icons.expand_less_rounded
+                                : Icons.map_outlined,
+                          ),
+                          label: Text(
+                            _showMap ? 'Ocultar mapa' : 'Ver en el mapa',
+                          ),
+                        ),
+                      ),
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 250),
+                        child: _showMap
+                            ? Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: CampusMap(
+                                  height: 200,
+                                  routeFrom: _deliveryPlaceId,
+                                  routeTo: settings.pickupPlaceId,
+                                  selectedPlaceId: settings.pickupPlaceId,
+                                  pins: [
+                                    MapPin(
+                                      placeId: _deliveryPlaceId,
+                                      icon: Icons.person_rounded,
+                                      color: AppColors.info,
+                                      label: 'Tú',
+                                    ),
+                                    MapPin(
+                                      placeId: settings.pickupPlaceId,
+                                      icon: Icons.storefront_rounded,
+                                      color: AppColors.primary,
+                                      label: widget.storeName,
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : const SizedBox(width: double.infinity),
                       ),
                     ],
                   ),
                 ),
-                if (index < 2)
-                  Container(
-                    height: 2,
-                    color: index < step
-                        ? const Color(0xFF4B2AAD)
-                        : Colors.grey[300],
+
+              // 3. Productos
+              _Section(
+                title: 'Tu pedido',
+                child: Column(
+                  children: [
+                    for (final i in items)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Row(
+                          children: [
+                            ProductImage(
+                              imageUrl: i.product.imageUrl,
+                              category: i.product.category,
+                              width: 52,
+                              height: 52,
+                              radius: 12,
+                              iconSize: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    i.product.name,
+                                    style: t.titleSmall,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    formatCop(i.totalPrice),
+                                    style: t.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            QuantityStepper(
+                              value: i.quantity,
+                              onIncrement: () => context
+                                  .read<CartCubit>()
+                                  .updateQuantity(i.product.id, i.quantity + 1),
+                              onDecrement: () => context
+                                  .read<CartCubit>()
+                                  .updateQuantity(i.product.id, i.quantity - 1),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              // 4. Cupón
+              _Section(
+                title: 'Cupón de descuento',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (coupon?.promotion != null)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.successLight,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.local_offer_rounded,
+                              color: AppColors.success,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                '${coupon!.promotion!.code} aplicado · ahorras ${formatCop(couponDiscount)}',
+                                style: t.titleSmall?.copyWith(
+                                  color: AppColors.success,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Quitar cupón',
+                              onPressed: () => setState(() {
+                                _couponResult = null;
+                                _coupon.clear();
+                              }),
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                          ],
+                        ),
+                      )
+                    else ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _coupon,
+                              textCapitalization: TextCapitalization.characters,
+                              decoration: InputDecoration(
+                                hintText: 'Escribe tu código',
+                                errorText: coupon?.error,
+                              ),
+                              onSubmitted: (_) => _applyCoupon(subtotal),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          FilledButton.tonal(
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size(0, 54),
+                            ),
+                            onPressed: () => _applyCoupon(subtotal),
+                            child: const Text('Aplicar'),
+                          ),
+                        ],
+                      ),
+                      if (coupons.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final c in coupons)
+                              ActionChip(
+                                avatar: const Icon(
+                                  Icons.confirmation_number_outlined,
+                                  size: 18,
+                                ),
+                                label: Text('${c.code} · ${c.valueLabel}'),
+                                onPressed: () {
+                                  _coupon.text = c.code;
+                                  _applyCoupon(subtotal);
+                                },
+                              ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ],
+                ),
+              ),
+
+              // 5. Pago
+              _Section(
+                title: 'Método de pago',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  onTap: () async {
+                    final p = await showPaymentPicker(
+                      context,
+                      settings: settings,
+                      mode: _mode,
+                      current: _payment,
+                    );
+                    if (p != null) setState(() => _payment = p);
+                  },
+                  leading: _RoundIcon(switch (_payment?.kind) {
+                    PaymentKind.cash => Icons.payments_rounded,
+                    PaymentKind.nequi => Icons.phone_iphone_rounded,
+                    PaymentKind.card => Icons.credit_card_rounded,
+                    null => Icons.wallet_rounded,
+                  }),
+                  title: Text(
+                    _payment?.label(_mode) ?? 'Elegir método de pago',
                   ),
-              ],
+                  subtitle: Text(
+                    [
+                      if (settings.acceptsCash) 'Efectivo',
+                      if (settings.acceptsNequi) 'Nequi',
+                      if (settings.acceptsCard) 'Tarjeta',
+                    ].join(' · '),
+                  ),
+                  trailing: const Icon(Icons.keyboard_arrow_down_rounded),
+                ),
+              ),
+
+              // 6. Resumen
+              _Section(
+                title: 'Resumen de pago',
+                child: Column(
+                  children: [
+                    _SummaryRow('Productos', formatCop(subtotal)),
+                    if (savings > 0)
+                      _SummaryRow(
+                        'Ahorro por promociones',
+                        '-${formatCop(savings)}',
+                        color: AppColors.success,
+                        hint: true,
+                      ),
+                    if (couponDiscount > 0)
+                      _SummaryRow(
+                        'Cupón ${coupon!.promotion!.code}',
+                        '-${formatCop(couponDiscount)}',
+                        color: AppColors.success,
+                      ),
+                    _SummaryRow(
+                      _mode == FulfillmentMode.delivery
+                          ? 'Domicilio'
+                          : 'Recoger en tienda',
+                      deliveryFee == 0 ? 'Gratis' : formatCop(deliveryFee),
+                    ),
+                    const Divider(height: 20),
+                    _SummaryRow('Total', formatCop(total), bold: true),
+                  ],
+                ),
+              ),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.verified_user_outlined,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Puedes cancelar sin costo mientras el emprendedor no haya aceptado tu pedido.',
+                      style: t.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          bottomNavigationBar: BottomActionBar(
+            child: FilledButton(
+              onPressed: _paying
+                  ? null
+                  : () => _pay(
+                      settings: settings,
+                      items: items,
+                      couponDiscount: couponDiscount,
+                      deliveryFee: deliveryFee,
+                    ),
+              child: _paying
+                  ? const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text('Procesando pago…'),
+                      ],
+                    )
+                  : Text(
+                      _payment?.kind == PaymentKind.cash
+                          ? 'Confirmar pedido · ${formatCop(total)}'
+                          : 'Pagar ${formatCop(total)}',
+                    ),
             ),
-          );
-        }),
-      ),
+          ),
+        );
+      },
     );
   }
+}
 
-  Widget _buildErrorWidget(BuildContext context, CheckoutError state) {
-    return Center(
+class _Section extends StatelessWidget {
+  final String title;
+  final Widget child;
+  const _Section({required this.title, required this.child});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 14),
+    child: SurfaceCard(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.red),
-          const SizedBox(height: 16),
-          Text(state.message),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: () {
-              _checkoutCubit.initCheckout(
-                userId: widget.userId,
-                storeId: widget.storeId,
-                storeName: widget.storeName,
-                cartItems: widget.cartItems,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4B2AAD),
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
+    ),
+  );
+}
+
+class _RoundIcon extends StatelessWidget {
+  final IconData icon;
+  const _RoundIcon(this.icon);
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme.primary;
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(icon, color: c),
+    );
+  }
+}
+
+class _InfoLine extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _InfoLine({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Icon(icon, size: 18, color: AppColors.textSecondary),
+      const SizedBox(width: 8),
+      Expanded(child: Text(text, style: Theme.of(context).textTheme.bodySmall)),
+    ],
+  );
+}
+
+class _SummaryRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool bold;
+  final bool hint;
+  final Color? color;
+  const _SummaryRow(
+    this.label,
+    this.value, {
+    this.bold = false,
+    this.hint = false,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              hint ? '$label (ya incluido)' : label,
+              style: bold
+                  ? t.titleMedium
+                  : t.bodyMedium?.copyWith(color: AppColors.textSecondary),
             ),
-            child: const Text('Reintentar'),
+          ),
+          Text(
+            value,
+            style: bold
+                ? t.titleLarge?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w800,
+                  )
+                : t.bodyMedium?.copyWith(
+                    color: color,
+                    fontWeight: color != null ? FontWeight.w700 : null,
+                  ),
           ),
         ],
       ),

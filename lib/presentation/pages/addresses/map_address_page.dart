@@ -1,3 +1,4 @@
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -15,10 +16,13 @@ class _MapAddressPageState extends State<MapAddressPage> {
   final MapAddressViewModel vm = MapAddressViewModel();
   final TextEditingController _searchController = TextEditingController();
   GoogleMapController? _mapController;
-  LatLng _currentLocation = const LatLng(10.9639, -74.7964); // Default: Santa Marta, Colombia
+  LatLng _currentLocation = const LatLng(
+    10.9639,
+    -74.7964,
+  ); // Default: Santa Marta, Colombia
   Set<Marker> _markers = {};
   bool _isLoadingLocation = true;
-  bool _hasMapError = false;
+  final bool _hasMapError = false;
 
   @override
   void initState() {
@@ -44,7 +48,8 @@ class _MapAddressPageState extends State<MapAddressPage> {
         return;
       }
 
-      if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
         final position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
           timeLimit: const Duration(seconds: 10),
@@ -66,7 +71,7 @@ class _MapAddressPageState extends State<MapAddressPage> {
         });
       }
     } catch (e) {
-      print('Error getting location: $e');
+      debugPrint('Error obteniendo la ubicación: $e');
       setState(() {
         _isLoadingLocation = false;
       });
@@ -97,23 +102,32 @@ class _MapAddressPageState extends State<MapAddressPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: _buildAppBar(),
-      body: _buildBody(),
-    );
+    return Scaffold(appBar: _buildAppBar(), body: _buildBody());
   }
 
   AppBar _buildAppBar() {
     return AppBar(
-      title: const Text('Agregar una dirección', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20)),
+      title: const Text(
+        'Agregar una dirección',
+        style: TextStyle(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.bold,
+          fontSize: 20,
+        ),
+      ),
       centerTitle: true,
-      leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context)),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+        onPressed: () => Navigator.pop(context),
+      ),
       backgroundColor: Colors.white,
       elevation: 1,
       actions: [
         if (vm.selected.isNotEmpty)
-          IconButton(icon: const Icon(Icons.check, color: Color(0xFF4B2AAD)), onPressed: _openConfirmation),
+          IconButton(
+            icon: const Icon(Icons.check, color: AppColors.primary),
+            onPressed: _openConfirmation,
+          ),
       ],
     );
   }
@@ -133,10 +147,8 @@ class _MapAddressPageState extends State<MapAddressPage> {
     return Container(
       height: 250,
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        border: Border(
-          bottom: BorderSide(color: Colors.grey.shade300, width: 1),
-        ),
+        color: AppColors.border,
+        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: Stack(
         children: [
@@ -145,9 +157,15 @@ class _MapAddressPageState extends State<MapAddressPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const CircularProgressIndicator(color: Color(0xFF4B2AAD)),
+                  const CircularProgressIndicator(color: AppColors.primary),
                   const SizedBox(height: 16),
-                  const Text('Cargando ubicación...', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                  const Text(
+                    'Cargando ubicación...',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
                 ],
               ),
             )
@@ -156,11 +174,15 @@ class _MapAddressPageState extends State<MapAddressPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, size: 48, color: Colors.amber.shade700),
+                  Icon(Icons.error_outline, size: 48, color: AppColors.accent),
                   const SizedBox(height: 16),
                   Text(
                     'Google Maps no está disponible',
-                    style: TextStyle(color: Colors.grey.shade700, fontSize: 14, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Padding(
@@ -168,7 +190,10 @@ class _MapAddressPageState extends State<MapAddressPage> {
                     child: Text(
                       'Usa la opción manual para agregar tu dirección',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -177,7 +202,7 @@ class _MapAddressPageState extends State<MapAddressPage> {
                     icon: const Icon(Icons.arrow_back, size: 18),
                     label: const Text('Volver'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4B2AAD),
+                      backgroundColor: AppColors.primary,
                     ),
                   ),
                 ],
@@ -215,19 +240,29 @@ class _MapAddressPageState extends State<MapAddressPage> {
               left: 0,
               right: 0,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 margin: const EdgeInsets.symmetric(horizontal: 32),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: const [
-                    BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.06), blurRadius: 6, offset: Offset(0, 2)),
+                    BoxShadow(
+                      color: Color.fromRGBO(0, 0, 0, 0.06),
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
+                    ),
                   ],
                 ),
                 child: const Text(
                   'Tu ubicación se muestra en azul',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ),
@@ -246,36 +281,48 @@ class _MapAddressPageState extends State<MapAddressPage> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(
-          bottom: BorderSide(color: Colors.grey.shade300, width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: Container(
         height: 50,
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: AppColors.surfaceMuted,
           borderRadius: BorderRadius.circular(25),
           boxShadow: [
-            BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.06), blurRadius: 4, offset: const Offset(0, 2)),
+            BoxShadow(
+              color: Color.fromRGBO(0, 0, 0, 0.06),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              const Icon(Icons.search, color: Colors.grey),
+              const Icon(Icons.search, color: AppColors.textSecondary),
               const SizedBox(width: 12),
               Expanded(
                 child: TextField(
                   controller: _searchController,
-                  decoration: const InputDecoration(hintText: 'Buscar calle...', border: InputBorder.none, hintStyle: TextStyle(color: Colors.grey)),
-                  style: const TextStyle(fontSize: 16, color: Colors.black87),
+                  decoration: const InputDecoration(
+                    hintText: 'Buscar calle...',
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(color: AppColors.textSecondary),
+                  ),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
               if (_searchController.text.isNotEmpty)
-                IconButton(icon: const Icon(Icons.clear, size: 20), onPressed: () {
-                  _searchController.clear();
-                }),
+                IconButton(
+                  icon: const Icon(Icons.clear, size: 20),
+                  onPressed: () {
+                    _searchController.clear();
+                  },
+                ),
             ],
           ),
         ),
@@ -289,15 +336,31 @@ class _MapAddressPageState extends State<MapAddressPage> {
       color: const Color.fromRGBO(245, 166, 35, 0.1),
       child: Row(
         children: [
-          const Icon(Icons.check_circle, color: Color(0xFF4B2AAD), size: 20),
+          const Icon(Icons.check_circle, color: AppColors.primary, size: 20),
           const SizedBox(width: 12),
-          Expanded(child: Text('Seleccionado: ${vm.selected}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade800))),
+          Expanded(
+            child: Text(
+              'Seleccionado: ${vm.selected}',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
           TextButton(
             onPressed: () {
               vm.select('');
             },
             style: TextButton.styleFrom(minimumSize: const Size(80, 36)),
-            child: const Text('Cambiar', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF4B2AAD))),
+            child: const Text(
+              'Cambiar',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+            ),
           ),
         ],
       ),
@@ -316,13 +379,37 @@ class _MapAddressPageState extends State<MapAddressPage> {
             onTap: () => vm.select(street),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 0.5))),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: AppColors.border, width: 0.5),
+                ),
+              ),
               child: Row(
                 children: [
-                  Icon(Icons.place_outlined, color: isSelected ? const Color(0xFF4B2AAD) : Colors.grey.shade600, size: 20),
+                  Icon(
+                    Icons.place_outlined,
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                    size: 20,
+                  ),
                   const SizedBox(width: 16),
-                  Expanded(child: Text(street, style: TextStyle(fontSize: 16, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal, color: isSelected ? const Color(0xFF4B2AAD) : Colors.black87))),
-                  if (isSelected) const Icon(Icons.check, color: Color(0xFF4B2AAD), size: 20),
+                  Expanded(
+                    child: Text(
+                      street,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  if (isSelected)
+                    const Icon(Icons.check, color: AppColors.primary, size: 20),
                 ],
               ),
             ),
@@ -334,7 +421,11 @@ class _MapAddressPageState extends State<MapAddressPage> {
 
   void _openConfirmation() async {
     if (vm.selected.isEmpty) return;
-    final result = await Navigator.of(context).push<String?>(MaterialPageRoute(builder: (_) => MapConfirmationPage(initialAddress: vm.selected)));
+    final result = await Navigator.of(context).push<String?>(
+      MaterialPageRoute(
+        builder: (_) => MapConfirmationPage(initialAddress: vm.selected),
+      ),
+    );
     if (result != null && result.isNotEmpty) {
       if (!mounted) return;
       Navigator.pop(context, result);

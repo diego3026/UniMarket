@@ -1,179 +1,228 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:unimarket/presentation/viewmodels/password_recovery/password_recovery_cubit.dart';
-import 'package:unimarket/presentation/viewmodels/password_recovery/password_recovery_state.dart';
-import 'package:unimarket/core/injection_container.dart';
-import 'package:unimarket/core/utils/notification_helper.dart';
+import 'package:go_router/go_router.dart';
 
-class PasswordRecoveryPage extends StatefulWidget {
-  const PasswordRecoveryPage({Key? key}) : super(key: key);
+import '../../../constants/app_colors.dart';
+import '../../../core/router/app_routes.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../viewmodels/password_recovery/password_recovery_cubit.dart';
+import '../../viewmodels/password_recovery/password_recovery_state.dart';
+
+/// Recuperar contraseña en 3 pasos: correo → código → nueva contraseña.
+/// (Figma: "Restablecer contraseña" y "Restablecer contraseña 2").
+class PasswordRecoveryPage extends StatelessWidget {
+  const PasswordRecoveryPage({super.key});
 
   @override
-  State<PasswordRecoveryPage> createState() => _PasswordRecoveryPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => PasswordRecoveryCubit(),
+      child: const _RecoveryView(),
+    );
+  }
 }
 
-class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
-  final _emailController = TextEditingController();
-  final _codeController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
+enum _Step { email, code, password, done }
+
+class _RecoveryView extends StatefulWidget {
+  const _RecoveryView();
+
+  @override
+  State<_RecoveryView> createState() => _RecoveryViewState();
+}
+
+class _RecoveryViewState extends State<_RecoveryView> {
+  final _email = TextEditingController();
+  final _code = TextEditingController();
+  final _pass = TextEditingController();
+  final _pass2 = TextEditingController();
+  _Step _step = _Step.email;
+  String? _error;
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _codeController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
+    for (final c in [_email, _code, _pass, _pass2]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => sl<PasswordRecoveryCubit>(),
-      child: Scaffold(
-        backgroundColor: Colors.grey[100],
-        appBar: AppBar(
-          title: const Text('Recuperar Contrase�a'),
-          backgroundColor: const Color(0xFF4B2AAD),
-        ),
-        body: BlocConsumer<PasswordRecoveryCubit, PasswordRecoveryState>(
-          listener: (context, state) {
-            if (state is PasswordRecoverySuccess) {
-              NotificationHelper.showSuccess(
-                context: context,
-                message: 'Contraseña restablecida para ${state.email}',
-              );
-              Future.delayed(const Duration(seconds: 1), () {
-                Navigator.pop(context);
-              });
-            } else if (state is PasswordRecoveryFailure) {
-              NotificationHelper.showError(
-                context: context,
-                message: state.message,
-              );
-            }
-          },
-          builder: (context, state) {
-            return Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (state is PasswordRecoveryInitial)
-                      _buildEmailStep(context)
-                    else if (state is PasswordRecoveryCodeSent)
-                      _buildCodeStep(context, state)
-                    else if (state is PasswordRecoveryCodeVerified)
-                      _buildPasswordStep(context)
-                    else if (state is PasswordRecoveryLoading)
-                      const Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                  ],
-                ),
+    final t = Theme.of(context).textTheme;
+    return BlocConsumer<PasswordRecoveryCubit, PasswordRecoveryState>(
+      listener: (context, state) {
+        setState(() {
+          _error = state is PasswordRecoveryFailure ? state.message : null;
+          if (state is PasswordRecoveryCodeSent) {
+            _step = _Step.code;
+            final code = context.read<PasswordRecoveryCubit>().demoCode;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                duration: const Duration(seconds: 8),
+                content: Text('Modo demo: tu código es $code'),
               ),
             );
-          },
-        ),
-      ),
-    );
-  }
+          }
+          if (state is PasswordRecoveryCodeVerified) _step = _Step.password;
+          if (state is PasswordRecoverySuccess) _step = _Step.done;
+        });
+      },
+      builder: (context, state) {
+        final loading = state is PasswordRecoveryLoading;
+        final cubit = context.read<PasswordRecoveryCubit>();
+        final (title, subtitle) = switch (_step) {
+          _Step.email => (
+            '¿Olvidaste tu contraseña?',
+            'Escribe tu correo institucional y te enviaremos un código.',
+          ),
+          _Step.code => (
+            'Revisa tu correo',
+            'Enviamos un código de 6 dígitos a ${_email.text.trim()}.',
+          ),
+          _Step.password => (
+            'Crea una nueva contraseña',
+            'Usa mayúsculas, minúsculas y números.',
+          ),
+          _Step.done => (
+            '¡Listo!',
+            'Tu contraseña se actualizó. Ya puedes iniciar sesión.',
+          ),
+        };
 
-  Widget _buildEmailStep(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 20),
-        const Text('Ingresa tu correo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        const Text('Te enviaremos un c�digo', style: TextStyle(fontSize: 14, color: Colors.grey)),
-        const SizedBox(height: 24),
-        TextField(
-          controller: _emailController,
-          keyboardType: TextInputType.emailAddress,
-          decoration: InputDecoration(
-            labelText: 'Correo',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        Widget field(
+          TextEditingController c,
+          String label,
+          IconData icon, {
+          bool obscure = false,
+          TextInputType? type,
+        }) => Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: TextField(
+            controller: c,
+            obscureText: obscure,
+            keyboardType: type,
+            decoration: InputDecoration(
+              labelText: label,
+              prefixIcon: Icon(icon),
+            ),
           ),
-        ),
-        const SizedBox(height: 24),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () => context.read<PasswordRecoveryCubit>().recoverPassword(_emailController.text),
-            child: const Text('Enviar'),
-          ),
-        ),
-      ],
-    );
-  }
+        );
 
-  Widget _buildCodeStep(BuildContext context, PasswordRecoveryCodeSent state) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 20),
-        const Text('C�digo de verificaci�n', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        Text('Enviamos un c�digo a ${state.email}', style: const TextStyle(fontSize: 14, color: Colors.grey)),
-        const SizedBox(height: 24),
-        TextField(
-          controller: _codeController,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          decoration: InputDecoration(
-            labelText: 'C�digo',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        return Scaffold(
+          appBar: AppBar(),
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppTheme.pagePadding,
+              8,
+              AppTheme.pagePadding,
+              24,
+            ),
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: AppColors.lightPanel,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Icon(
+                    _step == _Step.done
+                        ? Icons.verified_rounded
+                        : Icons.lock_reset_rounded,
+                    size: 36,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(title, style: t.headlineMedium),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                style: t.bodyMedium?.copyWith(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 24),
+              if (_step == _Step.email)
+                field(
+                  _email,
+                  'Correo institucional',
+                  Icons.alternate_email_rounded,
+                  type: TextInputType.emailAddress,
+                ),
+              if (_step == _Step.code)
+                field(
+                  _code,
+                  'Código de verificación',
+                  Icons.pin_outlined,
+                  type: TextInputType.number,
+                ),
+              if (_step == _Step.password) ...[
+                field(
+                  _pass,
+                  'Nueva contraseña',
+                  Icons.lock_outline_rounded,
+                  obscure: true,
+                ),
+                field(
+                  _pass2,
+                  'Confirma la contraseña',
+                  Icons.lock_outline_rounded,
+                  obscure: true,
+                ),
+              ],
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: AppColors.danger),
+                  ),
+                ),
+              FilledButton(
+                onPressed: loading
+                    ? null
+                    : () {
+                        switch (_step) {
+                          case _Step.email:
+                            cubit.recoverPassword(_email.text.trim());
+                          case _Step.code:
+                            cubit.verifyCode(_code.text.trim());
+                          case _Step.password:
+                            cubit.resetPassword(_pass.text, _pass2.text);
+                          case _Step.done:
+                            context.go(AppRoutes.login);
+                        }
+                      },
+                child: loading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(switch (_step) {
+                        _Step.email => 'Enviar código',
+                        _Step.code => 'Verificar código',
+                        _Step.password => 'Guardar contraseña',
+                        _Step.done => 'Ir a iniciar sesión',
+                      }),
+              ),
+              if (_step == _Step.code)
+                TextButton(
+                  onPressed: loading
+                      ? null
+                      : () => cubit.recoverPassword(_email.text.trim()),
+                  child: const Text('Reenviar código'),
+                ),
+            ],
           ),
-        ),
-        const SizedBox(height: 24),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () => context.read<PasswordRecoveryCubit>().verifyCode(_codeController.text),
-            child: const Text('Verificar'),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPasswordStep(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 20),
-        const Text('Nueva contrase�a', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 24),
-        TextField(
-          controller: _passwordController,
-          obscureText: true,
-          decoration: InputDecoration(
-            labelText: 'Contrase�a',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          onChanged: (_) => setState(() {}),
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _confirmPasswordController,
-          obscureText: true,
-          decoration: InputDecoration(
-            labelText: 'Confirmar',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          onChanged: (_) => setState(() {}),
-        ),
-        const SizedBox(height: 24),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () => context.read<PasswordRecoveryCubit>().resetPassword(_passwordController.text, _confirmPasswordController.text),
-            child: const Text('Restablecer'),
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 }

@@ -13,7 +13,9 @@ class ProductModel {
   final double rating;
   final bool isFeatured;
   final String createdAt;
-  
+  final String storeId;
+  final String storeName;
+
   ProductModel({
     required this.id,
     required this.name,
@@ -26,8 +28,10 @@ class ProductModel {
     this.rating = 0.0,
     this.isFeatured = false,
     required this.createdAt,
+    this.storeId = '',
+    this.storeName = '',
   });
-  
+
   // Convertir JSON a Modelo
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
@@ -42,9 +46,11 @@ class ProductModel {
       rating: (json['rating'] ?? 0).toDouble(),
       isFeatured: json['isFeatured'] ?? false,
       createdAt: json['createdAt'] ?? '',
+      storeId: json['storeId'] ?? '',
+      storeName: json['storeName'] ?? '',
     );
   }
-  
+
   // Convertir Modelo a JSON
   Map<String, dynamic> toJson() {
     return {
@@ -59,9 +65,11 @@ class ProductModel {
       'rating': rating,
       'isFeatured': isFeatured,
       'createdAt': createdAt,
+      'storeId': storeId,
+      'storeName': storeName,
     };
   }
-  
+
   // Convertir Modelo a Entidad
   ProductEntity toEntity() {
     return ProductEntity(
@@ -76,9 +84,11 @@ class ProductModel {
       rating: rating,
       isFeatured: isFeatured,
       createdAt: DateTime.parse(createdAt),
+      storeId: storeId,
+      storeName: storeName,
     );
   }
-  
+
   // Convertir Entidad a Modelo
   factory ProductModel.fromEntity(ProductEntity entity) {
     return ProductModel(
@@ -93,6 +103,8 @@ class ProductModel {
       rating: entity.rating,
       isFeatured: entity.isFeatured,
       createdAt: entity.createdAt.toIso8601String(),
+      storeId: entity.storeId,
+      storeName: entity.storeName,
     );
   }
 }

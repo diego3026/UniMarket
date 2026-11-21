@@ -1,3 +1,4 @@
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../../viewmodels/addresses/add_address_viewmodel.dart';
 import '../../viewmodels/addresses/addresses_viewmodel.dart';
@@ -23,7 +24,11 @@ class _AddAddressPageState extends State<AddAddressPage> {
   void initState() {
     super.initState();
     vm = AddAddressViewModel(initial: widget.initial);
-    _addressController = TextEditingController(text: vm.mainAddress.isNotEmpty ? vm.mainAddress : 'Carrera 78 #28 B - 52');
+    _addressController = TextEditingController(
+      text: vm.mainAddress.isNotEmpty
+          ? vm.mainAddress
+          : 'Carrera 78 #28 B - 52',
+    );
     _detailsController = TextEditingController(text: vm.secondaryAddress);
     _descriptionController = TextEditingController(text: vm.description);
   }
@@ -39,18 +44,24 @@ class _AddAddressPageState extends State<AddAddressPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: _buildAppBar(),
-      body: _buildBody(),
-    );
+    return Scaffold(appBar: _buildAppBar(), body: _buildBody());
   }
 
   AppBar _buildAppBar() {
     return AppBar(
-      title: const Text('Agregar una dirección', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20)),
+      title: const Text(
+        'Agregar una dirección',
+        style: TextStyle(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.bold,
+          fontSize: 20,
+        ),
+      ),
       centerTitle: true,
-      leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context)),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+        onPressed: () => Navigator.pop(context),
+      ),
       backgroundColor: Colors.white,
       elevation: 1,
     );
@@ -61,17 +72,20 @@ class _AddAddressPageState extends State<AddAddressPage> {
       padding: const EdgeInsets.all(16),
       child: Form(
         key: _formKey,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _buildMapSelector(),
-          const SizedBox(height: 32),
-          _buildAddressField(),
-          const SizedBox(height: 24),
-          _buildAddressDetailsField(),
-          const SizedBox(height: 24),
-          _buildDescriptionField(),
-          const SizedBox(height: 40),
-          _buildSaveButton(),
-        ]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildMapSelector(),
+            const SizedBox(height: 32),
+            _buildAddressField(),
+            const SizedBox(height: 24),
+            _buildAddressDetailsField(),
+            const SizedBox(height: 24),
+            _buildDescriptionField(),
+            const SizedBox(height: 40),
+            _buildSaveButton(),
+          ],
+        ),
       ),
     );
   }
@@ -79,62 +93,217 @@ class _AddAddressPageState extends State<AddAddressPage> {
   Widget _buildMapSelector() {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade300)),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: _openMapSelection,
           borderRadius: BorderRadius.circular(12),
-          child: Padding(padding: const EdgeInsets.all(16), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: const [Icon(Icons.map_outlined, color: Color(0xFF4B2AAD), size: 24), SizedBox(width: 12), Text('Seleccionar en el mapa', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF4B2AAD)))])),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.map_outlined, color: AppColors.primary, size: 24),
+                SizedBox(width: 12),
+                Text(
+                  'Seleccionar en el mapa',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
   Widget _buildAddressField() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('Dirección', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
-      const SizedBox(height: 8),
-      TextFormField(
-        controller: _addressController,
-        decoration: InputDecoration(hintText: 'Ingresa tu dirección', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade400)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade400)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF4B2AAD), width: 2)), filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), suffixIcon: IconButton(onPressed: _useCurrentLocation, icon: const Icon(Icons.my_location_outlined, color: Color(0xFF4B2AAD)))),
-        style: const TextStyle(fontSize: 16, color: Colors.black87),
-        validator: (value) => (value == null || value.isEmpty) ? 'Por favor ingresa una dirección' : null,
-      ),
-    ]);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Dirección',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _addressController,
+          decoration: InputDecoration(
+            hintText: 'Ingresa tu dirección',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.textMuted),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.textMuted),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            suffixIcon: IconButton(
+              onPressed: _useCurrentLocation,
+              icon: const Icon(
+                Icons.my_location_outlined,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+          style: const TextStyle(fontSize: 16, color: AppColors.textPrimary),
+          validator: (value) => (value == null || value.isEmpty)
+              ? 'Por favor ingresa una dirección'
+              : null,
+        ),
+      ],
+    );
   }
 
   Widget _buildAddressDetailsField() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('Detalles de la dirección', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
-      const SizedBox(height: 4),
-      Text('N° de apto, oficina o casa', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
-      const SizedBox(height: 8),
-      TextFormField(controller: _detailsController, decoration: InputDecoration(hintText: 'Ej: Apartamento 301, Oficina 4B', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade400)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade400)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF4B2AAD), width: 2)), filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14))),
-    ]);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Detalles de la dirección',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'N° de apto, oficina o casa',
+          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _detailsController,
+          decoration: InputDecoration(
+            hintText: 'Ej: Apartamento 301, Oficina 4B',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.textMuted),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.textMuted),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildDescriptionField() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('Descripción', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
-      const SizedBox(height: 4),
-      Text('Instrucciones adicionales (opcional)', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
-      const SizedBox(height: 8),
-      TextFormField(controller: _descriptionController, maxLines: 3, decoration: InputDecoration(hintText: 'Ej: Portón negro, llamar al timbre 3B, dejar con conserjería', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade400)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade400)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF4B2AAD), width: 2)), filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14))),
-    ]);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Descripción',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Instrucciones adicionales (opcional)',
+          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _descriptionController,
+          maxLines: 3,
+          decoration: InputDecoration(
+            hintText:
+                'Ej: Portón negro, llamar al timbre 3B, dejar con conserjería',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.textMuted),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.textMuted),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildSaveButton() {
-    return SizedBox(width: double.infinity, height: 56, child: ElevatedButton(onPressed: _saveAddress, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4B2AAD), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 2), child: const Text('Guardar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600))));
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: _saveAddress,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 2,
+        ),
+        child: const Text(
+          'Guardar',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
   }
 
   void _openMapSelection() {
-    Navigator.of(context).push<String?>(MaterialPageRoute(builder: (_) => const MapAddressPage())).then((result) {
-      if (result != null && result.isNotEmpty) {
-        _addressController.text = result;
-        vm.setMain(result);
-      }
-    });
+    Navigator.of(context)
+        .push<String?>(
+          MaterialPageRoute(builder: (_) => const MapAddressPage()),
+        )
+        .then((result) {
+          if (result != null && result.isNotEmpty) {
+            _addressController.text = result;
+            vm.setMain(result);
+          }
+        });
   }
 
   void _useCurrentLocation() {
@@ -142,15 +311,21 @@ class _AddAddressPageState extends State<AddAddressPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Usar ubicación actual'),
-        content: const Text('¿Deseas usar tu ubicación actual para completar la dirección?'),
+        content: const Text(
+          '¿Deseas usar tu ubicación actual para completar la dirección?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
           ElevatedButton(
             onPressed: () {
-              _addressController.text = 'Carrera 78 #28 B - 52 (Ubicación actual)';
+              _addressController.text =
+                  'Carrera 78 #28 B - 52 (Ubicación actual)';
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4B2AAD)),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Usar ubicación'),
           ),
         ],

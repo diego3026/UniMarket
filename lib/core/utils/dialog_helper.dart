@@ -11,34 +11,38 @@ class DialogHelper {
     Color? confirmColor,
   }) async {
     return await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(
-                cancelText,
-                style: const TextStyle(color: Colors.grey),
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text(title),
+              content: Text(message),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: confirmColor ?? const Color(0xFF4B2AAD),
-              ),
-              child: Text(confirmText, style: const TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    ) ?? false;
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text(
+                    cancelText,
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: confirmColor ?? const Color(0xFF4B2AAD),
+                  ),
+                  child: Text(
+                    confirmText,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
   }
 
   /// Muestra un diálogo de éxito
@@ -70,10 +74,11 @@ class DialogHelper {
                 Navigator.of(context).pop();
                 onPressed?.call();
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: Text(
+                buttonText,
+                style: const TextStyle(color: Colors.white),
               ),
-              child: Text(buttonText, style: const TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -110,10 +115,11 @@ class DialogHelper {
                 Navigator.of(context).pop();
                 onPressed?.call();
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: Text(
+                buttonText,
+                style: const TextStyle(color: Colors.white),
               ),
-              child: Text(buttonText, style: const TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -130,40 +136,44 @@ class DialogHelper {
     String cancelText = 'Cancelar',
   }) async {
     return await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          title: Row(
-            children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.orange),
-              const SizedBox(width: 12),
-              Expanded(child: Text(title)),
-            ],
-          ),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(
-                cancelText,
-                style: const TextStyle(color: Colors.grey),
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
+              title: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(title)),
+                ],
               ),
-              child: Text(confirmText, style: const TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    ) ?? false;
+              content: Text(message),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text(
+                    cancelText,
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                  ),
+                  child: Text(
+                    confirmText,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
   }
 
   /// Muestra un diálogo de información
@@ -198,7 +208,10 @@ class DialogHelper {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4B2AAD),
               ),
-              child: Text(buttonText, style: const TextStyle(color: Colors.white)),
+              child: Text(
+                buttonText,
+                style: const TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );

@@ -1,3 +1,5 @@
+import 'package:unimarket/core/utils/formatters.dart';
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:unimarket/core/injection_container.dart';
@@ -12,12 +14,11 @@ class ManageUsersPage extends StatelessWidget {
     return BlocProvider(
       create: (context) => sl<AdminUsersCubit>()..loadUsers(),
       child: Scaffold(
-        backgroundColor: Colors.white,
         appBar: AppBar(
           title: const Text('Gestionar Usuarios'),
           backgroundColor: Colors.white,
           elevation: 0,
-          foregroundColor: Colors.black,
+          foregroundColor: AppColors.textPrimary,
         ),
         body: BlocConsumer<AdminUsersCubit, AdminUsersState>(
           listener: (context, state) {
@@ -25,7 +26,7 @@ class ManageUsersPage extends StatelessWidget {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.message),
-                  backgroundColor: Colors.red,
+                  backgroundColor: AppColors.danger,
                 ),
               );
             } else if (state is AdminUserDeleted || state is AdminUserUpdated) {
@@ -36,7 +37,7 @@ class ManageUsersPage extends StatelessWidget {
                         ? 'Usuario eliminado'
                         : 'Usuario actualizado',
                   ),
-                  backgroundColor: Colors.green,
+                  backgroundColor: AppColors.success,
                 ),
               );
               context.read<AdminUsersCubit>().loadUsers();
@@ -55,11 +56,14 @@ class ManageUsersPage extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.person_off, size: 64, color: Colors.grey[300]),
+                      Icon(Icons.person_off, size: 64, color: AppColors.border),
                       const SizedBox(height: 16),
                       Text(
                         'No hay usuarios',
-                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -86,7 +90,9 @@ class ManageUsersPage extends StatelessWidget {
   }
 
   Widget _buildUserCard(BuildContext context, AdminUserModel user) {
-    Color statusColor = user.isActive ? Colors.green : Colors.grey;
+    Color statusColor = user.isActive
+        ? AppColors.success
+        : AppColors.textSecondary;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -94,7 +100,7 @@ class ManageUsersPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -102,30 +108,36 @@ class ManageUsersPage extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    user.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
-                  Text(
-                    user.email,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-                ],
+                    Text(
+                      user.email,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -145,11 +157,18 @@ class ManageUsersPage extends StatelessWidget {
             children: [
               Chip(
                 label: Text(user.role),
-                backgroundColor: const Color(0xFF4B2AAD).withOpacity(0.1),
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
               ),
-              Text(
-                'Desde ${user.joinDate.toString().split(' ')[0]}',
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  'Desde ${user.joinDate.toString().split(' ')[0]}',
+                  textAlign: TextAlign.end,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
               ),
             ],
           ),
@@ -162,7 +181,7 @@ class ManageUsersPage extends StatelessWidget {
                   icon: const Icon(Icons.visibility, size: 16),
                   label: const Text('Ver'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF4B2AAD),
+                    foregroundColor: AppColors.primary,
                   ),
                 ),
               ),
@@ -176,7 +195,7 @@ class ManageUsersPage extends StatelessWidget {
                   ),
                   label: Text(user.isActive ? 'Suspender' : 'Activar'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.orange,
+                    foregroundColor: AppColors.warning,
                   ),
                 ),
               ),
@@ -204,10 +223,7 @@ class ManageUsersPage extends StatelessWidget {
               user.joinDate.toString().split(' ')[0],
             ),
             _buildDetailRow('Total Órdenes:', '${user.totalOrders}'),
-            _buildDetailRow(
-              'Gastado:',
-              '\$${user.totalSpent.toStringAsFixed(2)}',
-            ),
+            _buildDetailRow('Gastado:', formatCop(user.totalSpent)),
           ],
         ),
         actions: [
@@ -216,7 +232,7 @@ class ManageUsersPage extends StatelessWidget {
             child: const Text('Cerrar'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () {
               context.read<AdminUsersCubit>().deleteUser(user.id);
               Navigator.pop(dialogContext);
@@ -232,7 +248,10 @@ class ManageUsersPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
         Text(
           value,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),

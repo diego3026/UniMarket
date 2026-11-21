@@ -30,7 +30,9 @@ class PasswordRecoveryCubit extends Cubit<PasswordRecoveryState> {
       _codeAttempts = 0;
       emit(PasswordRecoveryCodeSent(email));
     } catch (e) {
-      emit(PasswordRecoveryFailure('Error al enviar el correo. Intenta de nuevo.'));
+      emit(
+        PasswordRecoveryFailure('Error al enviar el correo. Intenta de nuevo.'),
+      );
     }
   }
 
@@ -44,7 +46,11 @@ class PasswordRecoveryCubit extends Cubit<PasswordRecoveryState> {
     _codeAttempts++;
 
     if (_codeAttempts > 3) {
-      emit(PasswordRecoveryFailure('Demasiados intentos fallidos. Intenta de nuevo más tarde.'));
+      emit(
+        PasswordRecoveryFailure(
+          'Demasiados intentos fallidos. Intenta de nuevo más tarde.',
+        ),
+      );
       return;
     }
 
@@ -64,12 +70,20 @@ class PasswordRecoveryCubit extends Cubit<PasswordRecoveryState> {
     }
 
     if (newPassword.length < 6) {
-      emit(PasswordRecoveryFailure('La contraseña debe tener al menos 6 caracteres'));
+      emit(
+        PasswordRecoveryFailure(
+          'La contraseña debe tener al menos 6 caracteres',
+        ),
+      );
       return;
     }
 
     if (!_isStrongPassword(newPassword)) {
-      emit(PasswordRecoveryFailure('La contraseña debe contener letras, números y caracteres especiales'));
+      emit(
+        PasswordRecoveryFailure(
+          'La contraseña debe contener letras, números y caracteres especiales',
+        ),
+      );
       return;
     }
 
@@ -86,7 +100,11 @@ class PasswordRecoveryCubit extends Cubit<PasswordRecoveryState> {
       _recoveryEmail = null;
       emit(PasswordRecoverySuccess(_recoveryEmail ?? ''));
     } catch (e) {
-      emit(PasswordRecoveryFailure('Error al restablecer la contraseña. Intenta de nuevo.'));
+      emit(
+        PasswordRecoveryFailure(
+          'Error al restablecer la contraseña. Intenta de nuevo.',
+        ),
+      );
     }
   }
 
@@ -105,9 +123,13 @@ class PasswordRecoveryCubit extends Cubit<PasswordRecoveryState> {
   }
 
   String _generateCode() {
-    return (100000 + (DateTime.now().millisecondsSinceEpoch % 900000)).toString();
+    return (100000 + (DateTime.now().millisecondsSinceEpoch % 900000))
+        .toString();
   }
 
   /// Resetea el estado al inicial
+  /// Solo para el modo demo (sin servidor de correo).
+  String? get demoCode => _generatedCode;
+
   void reset() => emit(PasswordRecoveryInitial());
 }
