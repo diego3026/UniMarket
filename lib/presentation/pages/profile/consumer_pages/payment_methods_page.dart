@@ -1,328 +1,276 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:unimarket/core/injection_container.dart';
-import 'package:unimarket/presentation/viewmodels/payment/payment_methods_cubit.dart';
-import 'package:unimarket/presentation/viewmodels/payment/payment_methods_state.dart';
-import 'package:unimarket/core/utils/notification_helper.dart';
 
-class PaymentMethodsPage extends StatelessWidget {
-  const PaymentMethodsPage({super.key});
+import '../../../../constants/app_colors.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../viewmodels/market/market_cubits.dart';
+import '../../../widgets/ui/app_widgets.dart';
+import '../../../widgets/ui/payment_widgets.dart';
+
+/// Billetera del cliente (Figma: "Mis métodos de pago").
+/// Lo que se guarda aquí es lo que aparece al finalizar la compra.
+class SavedPaymentMethodsPage extends StatefulWidget {
+  const SavedPaymentMethodsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => sl<PaymentMethodsCubit>()..loadPaymentMethods(),
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          title: const Text('Métodos de Pago'),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          foregroundColor: Colors.black,
-        ),
-        body: BlocConsumer<PaymentMethodsCubit, PaymentMethodsState>(
-          listener: (context, state) {
-            if (state is PaymentMethodsError) {
-              NotificationHelper.showError(
-                context: context,
-                message: state.message,
-              );
-            } else if (state is PaymentMethodAdded ||
-                state is PaymentMethodDeleted) {
-              NotificationHelper.showSuccess(
-                context: context,
-                message: state is PaymentMethodAdded
-                    ? 'Método de pago agregado'
-                    : 'Método de pago eliminado',
-              );
-              context.read<PaymentMethodsCubit>().loadPaymentMethods();
-            }
-          },
-          builder: (context, state) {
-            if (state is PaymentMethodsLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
+  State<SavedPaymentMethodsPage> createState() =>
+      _SavedPaymentMethodsPageState();
+}
 
-            if (state is PaymentMethodsLoaded) {
-              final methods = state.methods;
+class _SavedPaymentMethodsPageState extends State<SavedPaymentMethodsPage> {
+  final _pager = PageController(viewportFraction: 0.86);
+  int _index = 0;
 
-              if (methods.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.credit_card_off,
-                        size: 64,
-                        color: Colors.grey[300],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No hay métodos de pago',
-                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              return ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  ...methods.map(
-                    (method) => _buildPaymentMethodCard(context, method),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () => _showAddPaymentDialog(context),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Agregar método de pago'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4B2AAD),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                  ),
-                ],
-              );
-            }
-
-            if (state is PaymentMethodsError) {
-              return Center(child: Text('Error: ${state.message}'));
-            }
-
-            return const SizedBox.shrink();
-          },
-        ),
-      ),
-    );
+  @override
+  void dispose() {
+    _pager.dispose();
+    super.dispose();
   }
 
-  Widget _buildPaymentMethodCard(
-    BuildContext context,
-    PaymentMethodModel method,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: method.isDefault ? const Color(0xFF4B2AAD) : Colors.grey[300]!,
-          width: method.isDefault ? 2 : 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    _getCardIcon(method.issuer),
-                    color: const Color(0xFF4B2AAD),
-                    size: 32,
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        method.issuer,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      Text(
-                        '•••• ${method.lastDigits}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              if (method.isDefault)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4B2AAD).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'Por defecto',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF4B2AAD),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Vencimiento: ${method.expiryDate}',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-              PopupMenuButton(
-                itemBuilder: (context) => [
-                  if (!method.isDefault)
-                    PopupMenuItem(
-                      onTap: () {
-                        context
-                            .read<PaymentMethodsCubit>()
-                            .setDefaultPaymentMethod(method.id);
-                      },
-                      child: const Text('Establecer como predeterminado'),
-                    ),
-                  PopupMenuItem(
-                    onTap: () =>
-                        _confirmDeletePaymentMethod(context, method.id),
-                    child: const Text(
-                      'Eliminar',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  IconData _getCardIcon(String issuer) {
-    switch (issuer.toLowerCase()) {
-      case 'visa':
-      case 'mastercard':
-      case 'amex':
-        return Icons.credit_card;
-      default:
-        return Icons.credit_card;
-    }
-  }
-
-  void _showAddPaymentDialog(BuildContext context) {
-    final cardController = TextEditingController();
-    final cvvController = TextEditingController();
-    final expiryController = TextEditingController();
-    final holderController = TextEditingController();
-
-    showDialog(
+  Future<void> _editNequi(BuildContext context, String current) async {
+    final c = TextEditingController(text: current);
+    final v = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Agregar Método de Pago'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: cardController,
-                decoration: const InputDecoration(
-                  labelText: 'Número de tarjeta',
-                  hintText: '0000 0000 0000 0000',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: expiryController,
-                      decoration: const InputDecoration(
-                        labelText: 'Vencimiento',
-                        hintText: 'MM/YY',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: cvvController,
-                      decoration: const InputDecoration(
-                        labelText: 'CVV',
-                        hintText: '000',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: holderController,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre en la tarjeta',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
+      builder: (ctx) => AlertDialog(
+        title: const Text('Número de Nequi'),
+        content: TextField(
+          controller: c,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(prefixText: '+57 '),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancelar'),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4B2AAD),
-            ),
-            onPressed: () {
-              context.read<PaymentMethodsCubit>().addPaymentMethod(
-                cardNumber: cardController.text,
-                expiryDate: expiryController.text,
-                holderName: holderController.text,
-                cvv: '000',
-              );
-              Navigator.pop(dialogContext);
-            },
+          FilledButton(
+            style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
+            onPressed: () => Navigator.pop(ctx, c.text.trim()),
             child: const Text('Guardar'),
           ),
         ],
       ),
     );
+    if (v != null && v.isNotEmpty && context.mounted) {
+      context.read<WalletCubit>().setNequi(v);
+    }
   }
 
-  void _confirmDeletePaymentMethod(BuildContext context, int id) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Eliminar Método de Pago'),
-        content: const Text(
-          '¿Estás seguro de que quieres eliminar este método de pago?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancelar'),
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return BlocBuilder<WalletCubit, WalletState>(
+      builder: (context, w) {
+        final cards = w.cards;
+        if (_index >= cards.length && cards.isNotEmpty) {
+          _index = cards.length - 1;
+        }
+        final current = cards.isEmpty ? null : cards[_index];
+        return Scaffold(
+          appBar: AppBar(
+            actions: [
+              TextButton.icon(
+                onPressed: () => showAddCardSheet(context),
+                icon: const Icon(Icons.add_circle_outline_rounded),
+                label: const Text('Agregar'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              context.read<PaymentMethodsCubit>().deletePaymentMethod(id);
-              Navigator.pop(dialogContext);
-            },
-            child: const Text('Eliminar'),
+          body: ListView(
+            padding: const EdgeInsets.only(bottom: 32),
+            children: [
+              const PageTitle(title: 'Mis métodos de pago'),
+              if (cards.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.pagePadding,
+                  ),
+                  child: SurfaceCard(
+                    onTap: () => showAddCardSheet(context),
+                    child: const Column(
+                      children: [
+                        Icon(
+                          Icons.add_card_rounded,
+                          size: 40,
+                          color: AppColors.primary,
+                        ),
+                        SizedBox(height: 8),
+                        Text('Agrega una tarjeta para pagar más rápido'),
+                      ],
+                    ),
+                  ),
+                )
+              else ...[
+                SizedBox(
+                  height: 200,
+                  child: PageView.builder(
+                    controller: _pager,
+                    itemCount: cards.length,
+                    onPageChanged: (i) => setState(() => _index = i),
+                    itemBuilder: (_, i) => Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 8,
+                      ),
+                      child: LayoutBuilder(
+                        builder: (_, c) => Center(
+                          child: CreditCardView.fromCard(
+                            cards[i],
+                            width: c.maxWidth < c.maxHeight / 0.6
+                                ? c.maxWidth
+                                : c.maxHeight / 0.6,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    cards.length,
+                    (i) => AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: i == _index ? 18 : 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: i == _index
+                            ? AppColors.primary
+                            : AppColors.border,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                ),
+                if (current != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppTheme.pagePadding,
+                      12,
+                      AppTheme.pagePadding,
+                      0,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: current.isDefault
+                              ? const StatusChip(
+                                  label: 'Predeterminada para pagar',
+                                  color: AppColors.success,
+                                )
+                              : OutlinedButton.icon(
+                                  onPressed: () => context
+                                      .read<WalletCubit>()
+                                      .setDefault(current.id),
+                                  icon: const Icon(
+                                    Icons.check_rounded,
+                                    size: 18,
+                                  ),
+                                  label: const Text('Usar por defecto'),
+                                ),
+                        ),
+                        const SizedBox(width: 10),
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.danger,
+                          ),
+                          onPressed: () async {
+                            final ok = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: Text(
+                                  '¿Eliminar ${current.brand} •••• ${current.last4}?',
+                                ),
+                                content: const Text(
+                                  'Podrás volver a agregarla cuando quieras.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: const Text('Conservar'),
+                                  ),
+                                  FilledButton(
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppColors.danger,
+                                      minimumSize: const Size(0, 44),
+                                    ),
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    child: const Text('Eliminar tarjeta'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (ok == true && context.mounted) {
+                              context.read<WalletCubit>().remove(current.id);
+                            }
+                          },
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          label: const Text('Eliminar'),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+              const SizedBox(height: 24),
+              const SectionHeader(title: 'Otros medios'),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.pagePadding,
+                ),
+                child: SurfaceCard(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    children: [
+                      MenuTile(
+                        icon: Icons.phone_iphone_rounded,
+                        color: const Color(0xFFDA0081),
+                        title: 'Nequi',
+                        subtitle: w.nequiPhone,
+                        trailing: const Icon(
+                          Icons.edit_outlined,
+                          color: AppColors.textMuted,
+                        ),
+                        onTap: () => _editNequi(context, w.nequiPhone),
+                      ),
+                      const MenuTile(
+                        icon: Icons.payments_rounded,
+                        color: AppColors.success,
+                        title: 'Efectivo',
+                        subtitle: 'Pagas al recibir o al recoger tu pedido',
+                        trailing: SizedBox.shrink(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.pagePadding,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Al pagar solo verás los medios que acepta cada emprendimiento.',
+                        style: t.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

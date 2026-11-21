@@ -29,27 +29,27 @@ class ReportsCubit extends Cubit<ReportsState> {
 
     switch (period) {
       case 'Hoy':
-        totalSales = 2450.00;
+        totalSales = 2450000;
         totalOrders = 23;
         newUsers = 5;
         break;
       case 'Esta semana':
-        totalSales = 12450.00;
+        totalSales = 12450000;
         totalOrders = 145;
         newUsers = 28;
         break;
       case 'Este mes':
-        totalSales = 45230.00;
+        totalSales = 45230000;
         totalOrders = 567;
         newUsers = 123;
         break;
       case 'Este año':
-        totalSales = 350000.00;
+        totalSales = 350000000;
         totalOrders = 4234;
         newUsers = 890;
         break;
       default:
-        totalSales = 45230.00;
+        totalSales = 45230000;
         totalOrders = 567;
         newUsers = 123;
     }
@@ -63,19 +63,19 @@ class ReportsCubit extends Cubit<ReportsState> {
         const TopSeller(
           rank: 1,
           name: 'Tienda de Ropa María',
-          revenue: 12450.00,
+          revenue: 12450000,
           sales: 234,
         ),
         const TopSeller(
           rank: 2,
           name: 'Comidas Caseras Juan',
-          revenue: 8900.00,
+          revenue: 8900000,
           sales: 89,
         ),
         const TopSeller(
           rank: 3,
           name: 'Tech Shop',
-          revenue: 7230.00,
+          revenue: 7230000,
           sales: 156,
         ),
       ],

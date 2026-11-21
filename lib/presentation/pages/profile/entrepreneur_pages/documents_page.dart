@@ -1,3 +1,4 @@
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:unimarket/core/injection_container.dart';
@@ -13,12 +14,11 @@ class DocumentsPage extends StatelessWidget {
     return BlocProvider(
       create: (context) => sl<DocumentsCubit>()..loadDocuments(),
       child: Scaffold(
-        backgroundColor: Colors.white,
         appBar: AppBar(
           title: const Text('Documentos'),
           backgroundColor: Colors.white,
           elevation: 0,
-          foregroundColor: Colors.black,
+          foregroundColor: AppColors.textPrimary,
         ),
         body: BlocConsumer<DocumentsCubit, DocumentsState>(
           listener: (context, state) {
@@ -52,10 +52,10 @@ class DocumentsPage extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF4B2AAD).withOpacity(0.1),
+                      color: AppColors.seller.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: const Color(0xFF4B2AAD).withOpacity(0.3),
+                        color: AppColors.seller.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Column(
@@ -65,7 +65,7 @@ class DocumentsPage extends StatelessWidget {
                           children: [
                             Icon(
                               Icons.shield_outlined,
-                              color: const Color(0xFF4B2AAD),
+                              color: AppColors.seller,
                               size: 20,
                             ),
                             const SizedBox(width: 12),
@@ -74,7 +74,7 @@ class DocumentsPage extends StatelessWidget {
                                 'Todos los documentos son verificados de forma segura',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: const Color(0xFF4B2AAD),
+                                  color: AppColors.seller,
                                 ),
                               ),
                             ),
@@ -86,11 +86,11 @@ class DocumentsPage extends StatelessWidget {
                           child: LinearProgressIndicator(
                             value: verificationProgress / 100,
                             minHeight: 6,
-                            backgroundColor: Colors.grey[300],
+                            backgroundColor: AppColors.border,
                             valueColor: AlwaysStoppedAnimation(
                               verificationProgress == 100
-                                  ? Colors.green
-                                  : const Color(0xFF4B2AAD),
+                                  ? AppColors.success
+                                  : AppColors.seller,
                             ),
                           ),
                         ),
@@ -99,7 +99,7 @@ class DocumentsPage extends StatelessWidget {
                           'Verificación: $verificationProgress%',
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.grey[600],
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],
@@ -127,13 +127,13 @@ class DocumentsPage extends StatelessWidget {
     late IconData statusIcon;
 
     if (document.isVerified) {
-      statusColor = Colors.green;
+      statusColor = AppColors.success;
       statusIcon = Icons.verified;
     } else if (document.isRejected) {
-      statusColor = Colors.red;
+      statusColor = AppColors.danger;
       statusIcon = Icons.error;
     } else {
-      statusColor = Colors.orange;
+      statusColor = AppColors.warning;
       statusIcon = Icons.schedule;
     }
 
@@ -143,7 +143,7 @@ class DocumentsPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,33 +151,42 @@ class DocumentsPage extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                document.name,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+              Expanded(
+                child: Text(
+                  document.name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               Container(
+                constraints: const BoxConstraints(maxWidth: 140),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(statusIcon, size: 12, color: statusColor),
                     const SizedBox(width: 4),
-                    Text(
-                      document.status,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: statusColor,
+                    Flexible(
+                      child: Text(
+                        document.status,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: statusColor,
+                        ),
                       ),
                     ),
                   ],
@@ -188,7 +197,7 @@ class DocumentsPage extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Cargado: ${document.uploadedAt.toString().split(' ')[0]}',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
           if (document.isRejected && document.rejectReason != null)
@@ -198,12 +207,12 @@ class DocumentsPage extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.red[50],
+                    color: AppColors.dangerLight,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     'Motivo del rechazo: ${document.rejectReason}',
-                    style: TextStyle(fontSize: 11, color: Colors.red[700]),
+                    style: TextStyle(fontSize: 11, color: AppColors.danger),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -217,7 +226,7 @@ class DocumentsPage extends StatelessWidget {
                   icon: const Icon(Icons.visibility, size: 16),
                   label: const Text('Ver'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF4B2AAD),
+                    foregroundColor: AppColors.seller,
                   ),
                 ),
               ),
@@ -227,7 +236,9 @@ class DocumentsPage extends StatelessWidget {
                   onPressed: () => _showUploadDocumentDialog(context, document),
                   icon: const Icon(Icons.upload_file, size: 16),
                   label: const Text('Cargar'),
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.blue),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.seller,
+                  ),
                 ),
               ),
             ],
@@ -249,7 +260,7 @@ class DocumentsPage extends StatelessWidget {
               width: double.infinity,
               height: 300,
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: AppColors.border,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: document.fileUrl != null
@@ -262,12 +273,16 @@ class DocumentsPage extends StatelessWidget {
                           return const Icon(
                             Icons.image,
                             size: 100,
-                            color: Colors.grey,
+                            color: AppColors.textSecondary,
                           );
                         },
                       ),
                     )
-                  : const Icon(Icons.image, size: 100, color: Colors.grey),
+                  : const Icon(
+                      Icons.image,
+                      size: 100,
+                      color: AppColors.textSecondary,
+                    ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -277,7 +292,7 @@ class DocumentsPage extends StatelessWidget {
             if (document.verifiedAt != null)
               Text(
                 'Verificado: ${document.verifiedAt.toString().split(' ')[0]}',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
           ],
         ),
@@ -303,24 +318,28 @@ class DocumentsPage extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: AppColors.surfaceMuted,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey[300]!),
+                border: Border.all(color: AppColors.border),
               ),
               child: Column(
                 children: [
-                  Icon(Icons.cloud_upload, size: 40, color: Colors.grey[600]),
+                  Icon(
+                    Icons.cloud_upload,
+                    size: 40,
+                    color: AppColors.textSecondary,
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     'Selecciona o arrastra tu archivo aquí',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey[600]),
+                    style: TextStyle(color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'Formatos soportados: PDF, JPG, PNG',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                    style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                   ),
                 ],
               ),
@@ -333,7 +352,7 @@ class DocumentsPage extends StatelessWidget {
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.seller),
             onPressed: () {
               context.read<DocumentsCubit>().uploadDocument(
                 documentName: document.name,

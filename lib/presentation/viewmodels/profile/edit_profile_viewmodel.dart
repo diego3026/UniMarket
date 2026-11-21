@@ -26,9 +26,5 @@ class EditProfileViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Map<String, String> toMap() => {
-        'name': name,
-        'email': email,
-        'phone': phone,
-      };
+  Map<String, String> toMap() => {'name': name, 'email': email, 'phone': phone};
 }

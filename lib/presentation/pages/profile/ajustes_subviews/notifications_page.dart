@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 
 import 'package:unimarket/constants/app_colors.dart';
 
-class NotificationsPage extends StatefulWidget {
-  const NotificationsPage({super.key});
+class NotificationSettingsPage extends StatefulWidget {
+  const NotificationSettingsPage({super.key});
 
   @override
-  State<NotificationsPage> createState() => _NotificationsPageState();
+  State<NotificationSettingsPage> createState() =>
+      _NotificationSettingsPageState();
 }
 
-class _NotificationsPageState extends State<NotificationsPage> {
+class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   bool notificacionesEmail = false;
   bool notificacionesPromos = true;
   bool notificacionesPedidos = true;
@@ -19,24 +20,36 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFF6F3FF),
+      backgroundColor: isDarkMode
+          ? const Color(0xFF121212)
+          : AppColors.background,
       appBar: AppBar(
         leading: BackButton(color: isDarkMode ? Colors.white : Colors.white),
         title: const Text(
           'Notificaciones',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white),
         ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
         flexibleSpace: Container(
-          decoration: BoxDecoration(gradient: AppColors.purpleGradient),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).colorScheme.primary,
+                Color.lerp(
+                  Theme.of(context).colorScheme.primary,
+                  Colors.white,
+                  0.25,
+                )!,
+              ],
+            ),
+          ),
         ),
       ),
       body: ListView(
@@ -111,11 +124,24 @@ class _NotificationsPageState extends State<NotificationsPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: AppColors.purpleGradient,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(context).colorScheme.primary,
+            Color.lerp(
+              Theme.of(context).colorScheme.primary,
+              Colors.white,
+              0.25,
+            )!,
+          ],
+        ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.22),
+            color: Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: 0.22),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -127,7 +153,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.16),
+              color: Colors.white.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(18),
             ),
             child: const Icon(
@@ -175,7 +201,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: isDarkMode ? Colors.white : Colors.black87,
+            color: isDarkMode ? Colors.white : AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 4),
@@ -183,7 +209,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
           subtitle,
           style: TextStyle(
             fontSize: 13,
-            color: isDarkMode ? Colors.grey[400] : Colors.grey.shade600,
+            color: isDarkMode ? AppColors.textMuted : AppColors.textSecondary,
             height: 1.35,
           ),
         ),
@@ -204,50 +230,63 @@ class _NotificationsPageState extends State<NotificationsPage> {
         color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade200,
+          color: isDarkMode ? AppColors.textSecondary : AppColors.border,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.04),
+            color: Colors.black.withValues(alpha: isDarkMode ? 0.3 : 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: SwitchListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        secondary: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(isDarkMode ? 0.2 : 0.1),
-            borderRadius: BorderRadius.circular(14),
+      child: Material(
+        type: MaterialType.transparency,
+        child: SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 6,
           ),
-          child: Icon(icon, color: AppColors.primary, size: 24),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: isDarkMode ? Colors.white : Colors.black87,
-          ),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 13,
-              color: isDarkMode ? Colors.grey[400] : Colors.grey.shade600,
-              height: 1.3,
+          secondary: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: isDarkMode ? 0.2 : 0.1),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              icon,
+              color: Theme.of(context).colorScheme.primary,
+              size: 24,
             ),
           ),
+          title: Text(
+            title,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: isDarkMode ? Colors.white : AppColors.textPrimary,
+            ),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 13,
+                color: isDarkMode
+                    ? AppColors.textMuted
+                    : AppColors.textSecondary,
+                height: 1.3,
+              ),
+            ),
+          ),
+          value: value,
+          onChanged: onChanged,
+          activeThumbColor: Theme.of(context).colorScheme.primary,
         ),
-        value: value,
-        onChanged: onChanged,
-        activeColor: AppColors.primary,
-        activeThumbColor: AppColors.primary,
       ),
     );
   }
@@ -256,22 +295,30 @@ class _NotificationsPageState extends State<NotificationsPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightPanel,
+        color: isDarkMode
+            ? const Color(0xFF1E1E1E)
+            : Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: AppColors.primary.withOpacity(isDarkMode ? 0.12 : 0.08),
+          color: Theme.of(
+            context,
+          ).colorScheme.primary.withValues(alpha: isDarkMode ? 0.12 : 0.08),
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline, color: AppColors.primary, size: 22),
+          Icon(
+            Icons.info_outline,
+            color: Theme.of(context).colorScheme.primary,
+            size: 22,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               'Puedes volver a esta pantalla cuando quieras para adaptar las notificaciones a tu rutina de compra.',
               style: TextStyle(
-                color: isDarkMode ? Colors.grey[300] : Colors.grey.shade800,
+                color: isDarkMode ? AppColors.border : AppColors.textSecondary,
                 height: 1.35,
                 fontSize: 13,
               ),

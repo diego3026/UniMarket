@@ -15,7 +15,7 @@ class AdminUsersCubit extends Cubit<AdminUsersState> {
       joinDate: DateTime(2024, 1, 10),
       lastActiveDate: DateTime.now(),
       totalOrders: 15,
-      totalSpent: 450.00,
+      totalSpent: 450000,
     ),
     AdminUserModel(
       id: 2,
@@ -26,7 +26,7 @@ class AdminUsersCubit extends Cubit<AdminUsersState> {
       joinDate: DateTime(2024, 2, 5),
       lastActiveDate: DateTime.now().subtract(const Duration(hours: 2)),
       totalOrders: 45,
-      totalSpent: 0.00,
+      totalSpent: 0,
     ),
     AdminUserModel(
       id: 3,
@@ -37,7 +37,7 @@ class AdminUsersCubit extends Cubit<AdminUsersState> {
       joinDate: DateTime(2023, 12, 20),
       lastActiveDate: DateTime.now().subtract(const Duration(days: 30)),
       totalOrders: 3,
-      totalSpent: 120.00,
+      totalSpent: 120000,
     ),
   ];
 

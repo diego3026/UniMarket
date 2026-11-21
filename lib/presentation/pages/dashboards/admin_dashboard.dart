@@ -1,3 +1,4 @@
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'sections/entrepreneurs_section.dart';
 import 'sections/users_management_section.dart';
@@ -34,23 +35,14 @@ class _AdminDashboardState extends State<AdminDashboard>
           color: Colors.white,
           child: TabBar(
             controller: _tabController,
-            indicatorColor: Colors.purple,
-            labelColor: Colors.purple,
-            unselectedLabelColor: Colors.grey,
+            indicatorColor: Theme.of(context).colorScheme.primary,
+            labelColor: Theme.of(context).colorScheme.primary,
+            unselectedLabelColor: AppColors.textSecondary,
             labelStyle: const TextStyle(fontWeight: FontWeight.bold),
             tabs: const [
-              Tab(
-                text: 'Emprendimientos',
-                icon: Icon(Icons.store),
-              ),
-              Tab(
-                text: 'Usuarios',
-                icon: Icon(Icons.people),
-              ),
-              Tab(
-                text: 'Rendimiento',
-                icon: Icon(Icons.analytics),
-              ),
+              Tab(text: 'Negocios', icon: Icon(Icons.store)),
+              Tab(text: 'Usuarios', icon: Icon(Icons.people)),
+              Tab(text: 'Rendimiento', icon: Icon(Icons.analytics)),
             ],
           ),
         ),
@@ -68,4 +60,3 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 }
-

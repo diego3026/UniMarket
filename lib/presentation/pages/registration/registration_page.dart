@@ -1,3 +1,4 @@
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../viewmodels/registration/registration_cubit.dart';
@@ -16,7 +17,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   bool _acceptTerms = false;
   bool _obscurePassword = true;
@@ -25,7 +27,6 @@ class _RegistrationPageState extends State<RegistrationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -52,40 +53,103 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back, color: Colors.black),
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: AppColors.textPrimary,
+                    ),
                     visualDensity: VisualDensity.compact,
-                    constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+                    constraints: const BoxConstraints(
+                      minHeight: 44,
+                      minWidth: 44,
+                    ),
                   ),
                   const SizedBox(height: 20),
-                  const Text('Regístrate', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Regístrate',
+                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 8),
-                  const Text('Crea una cuenta para comenzar', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                  const Text(
+                    'Crea una cuenta para comenzar',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                   const SizedBox(height: 40),
 
-                  const Text('Nombre Completo', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87)),
+                  const Text(
+                    'Nombre Completo',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   _buildInput(_nameController, 'Nombre y Apellidos'),
                   const SizedBox(height: 24),
 
-                  const Text('Correo Institucional', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87)),
+                  const Text(
+                    'Correo Institucional',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  _buildInput(_emailController, 'name@unimagdalena.edu.co', keyboardType: TextInputType.emailAddress),
+                  _buildInput(
+                    _emailController,
+                    'name@unimagdalena.edu.co',
+                    keyboardType: TextInputType.emailAddress,
+                  ),
                   const SizedBox(height: 24),
 
-                  const Text('Teléfono', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87)),
+                  const Text(
+                    'Teléfono',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  _buildInput(_phoneController, '3001234567', keyboardType: TextInputType.phone),
+                  _buildInput(
+                    _phoneController,
+                    '3001234567',
+                    keyboardType: TextInputType.phone,
+                  ),
                   const SizedBox(height: 24),
 
-                  const Text('Contraseña', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87)),
+                  const Text(
+                    'Contraseña',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  _buildPasswordInput(_passwordController, _obscurePassword, () {
-                    setState(() => _obscurePassword = !_obscurePassword);
-                  }),
+                  _buildPasswordInput(
+                    _passwordController,
+                    _obscurePassword,
+                    () {
+                      setState(() => _obscurePassword = !_obscurePassword);
+                    },
+                  ),
                   const SizedBox(height: 12),
-                  _buildPasswordInput(_confirmPasswordController, _obscureConfirmPassword, () {
-                    setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
-                  }, hint: 'Confirma tu contraseña'),
+                  _buildPasswordInput(
+                    _confirmPasswordController,
+                    _obscureConfirmPassword,
+                    () {
+                      setState(
+                        () =>
+                            _obscureConfirmPassword = !_obscureConfirmPassword,
+                      );
+                    },
+                    hint: 'Confirma tu contraseña',
+                  ),
                   const SizedBox(height: 24),
 
                   Row(
@@ -96,21 +160,40 @@ class _RegistrationPageState extends State<RegistrationPage> {
                         height: 24,
                         child: Checkbox(
                           value: _acceptTerms,
-                          onChanged: (value) => setState(() => _acceptTerms = value ?? false),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                          activeColor: Colors.blue,
+                          onChanged: (value) =>
+                              setState(() => _acceptTerms = value ?? false),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          activeColor: AppColors.primary,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: RichText(
                           text: const TextSpan(
-                            style: TextStyle(fontSize: 14, color: Colors.grey, height: 1.4),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.textSecondary,
+                              height: 1.4,
+                            ),
                             children: [
                               TextSpan(text: 'Aceptas los '),
-                              TextSpan(text: 'Términos y Condiciones', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w500)),
+                              TextSpan(
+                                text: 'Términos y Condiciones',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                               TextSpan(text: ' y la '),
-                              TextSpan(text: 'Política de Privacidad', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w500)),
+                              TextSpan(
+                                text: 'Política de Privacidad',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                               TextSpan(text: '.'),
                             ],
                           ),
@@ -123,28 +206,56 @@ class _RegistrationPageState extends State<RegistrationPage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _acceptTerms && !isLoading ? () {
-                        context.read<RegistrationCubit>().register(
-                              name: _nameController.text,
-                              email: _emailController.text,
-                              phone: _phoneController.text,
-                              password: _passwordController.text,
-                              confirmPassword: _confirmPasswordController.text,
-                              acceptTerms: _acceptTerms,
-                            );
-                      } : null,
+                      onPressed: _acceptTerms && !isLoading
+                          ? () {
+                              context.read<RegistrationCubit>().register(
+                                name: _nameController.text,
+                                email: _emailController.text,
+                                phone: _phoneController.text,
+                                password: _passwordController.text,
+                                confirmPassword:
+                                    _confirmPasswordController.text,
+                                acceptTerms: _acceptTerms,
+                              );
+                            }
+                          : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         elevation: 0,
                       ),
-                      child: isLoading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Regístrate', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      child: isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Regístrate',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Center(child: GestureDetector(onTap: () {}, child: const Text('¿Ya tienes una cuenta? Inicia sesión', style: TextStyle(color: Colors.blue)))),
+                  Center(
+                    child: GestureDetector(
+                      onTap: () {},
+                      child: const Text(
+                        '¿Ya tienes una cuenta? Inicia sesión',
+                        style: TextStyle(color: AppColors.primary),
+                      ),
+                    ),
+                  ),
                 ],
               );
             },
@@ -154,32 +265,64 @@ class _RegistrationPageState extends State<RegistrationPage> {
     );
   }
 
-  Widget _buildInput(TextEditingController controller, String hint, {TextInputType keyboardType = TextInputType.text}) {
+  Widget _buildInput(
+    TextEditingController controller,
+    String hint, {
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return Container(
-      decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
-        decoration: InputDecoration(hintText: hint, hintStyle: const TextStyle(color: Colors.grey), border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16)),
-        style: const TextStyle(fontSize: 16, color: Colors.black),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: AppColors.textSecondary),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+        ),
+        style: const TextStyle(fontSize: 16, color: AppColors.textPrimary),
       ),
     );
   }
 
-  Widget _buildPasswordInput(TextEditingController controller, bool obscure, VoidCallback toggle, {String hint = 'Ingresa tu contraseña'}) {
+  Widget _buildPasswordInput(
+    TextEditingController controller,
+    bool obscure,
+    VoidCallback toggle, {
+    String hint = 'Ingresa tu contraseña',
+  }) {
     return Container(
-      decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: TextField(
         controller: controller,
         obscureText: obscure,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.grey),
+          hintStyle: const TextStyle(color: AppColors.textSecondary),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          suffixIcon: IconButton(onPressed: toggle, icon: Icon(obscure ? Icons.visibility_off : Icons.visibility, color: Colors.grey)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+          suffixIcon: IconButton(
+            onPressed: toggle,
+            icon: Icon(
+              obscure ? Icons.visibility_off : Icons.visibility,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ),
-        style: const TextStyle(fontSize: 16, color: Colors.black),
+        style: const TextStyle(fontSize: 16, color: AppColors.textPrimary),
       ),
     );
   }

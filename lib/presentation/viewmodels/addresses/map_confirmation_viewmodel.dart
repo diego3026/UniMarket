@@ -6,9 +6,9 @@ class MapConfirmationViewModel extends ChangeNotifier {
   String description;
 
   MapConfirmationViewModel({required String initialMain})
-      : mainAddress = initialMain,
-        details = '',
-        description = '';
+    : mainAddress = initialMain,
+      details = '',
+      description = '';
 
   void setMain(String v) {
     mainAddress = v;

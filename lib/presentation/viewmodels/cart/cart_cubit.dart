@@ -16,7 +16,7 @@ class CartCubit extends Cubit<CartState> {
     emit(const CartLoading());
     try {
       // TODO: Load cart from local storage or API
-      emit(CartLoaded(items: _items));
+      emit(CartLoaded(items: List.unmodifiable(_items)));
     } catch (e) {
       emit(CartError(message: e.toString()));
     }
@@ -24,8 +24,9 @@ class CartCubit extends Cubit<CartState> {
 
   void addToCart(ProductEntity product) {
     try {
-      final existingIndex =
-          _items.indexWhere((item) => item.product.id == product.id);
+      final existingIndex = _items.indexWhere(
+        (item) => item.product.id == product.id,
+      );
 
       if (existingIndex >= 0) {
         _items[existingIndex] = _items[existingIndex].copyWith(
@@ -74,6 +75,23 @@ class CartCubit extends Cubit<CartState> {
     } catch (e) {
       emit(CartError(message: 'Error al limpiar carrito: $e'));
     }
+  }
+
+  /// Actualiza los precios cuando cambian las promociones del catálogo.
+  void refreshPrices(List<ProductEntity> catalog) {
+    if (_items.isEmpty) return;
+    final byId = {for (final p in catalog) p.id: p};
+    _items = [
+      for (final i in _items)
+        i.copyWith(product: byId[i.product.id] ?? i.product),
+    ];
+    emit(CartLoaded(items: List.unmodifiable(_items)));
+  }
+
+  /// Quita del carrito los productos de una tienda (ya se pidieron).
+  void removeStore(String storeId) {
+    _items.removeWhere((i) => i.product.storeId == storeId);
+    emit(CartLoaded(items: List.unmodifiable(_items)));
   }
 
   double getTotal() {

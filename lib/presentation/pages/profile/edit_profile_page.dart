@@ -1,3 +1,4 @@
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../../viewmodels/profile/edit_profile_viewmodel.dart';
 
@@ -48,7 +49,7 @@ class _EditarPerfilPageState extends State<EditarPerfilPage> {
         centerTitle: false,
         elevation: 0,
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        foregroundColor: AppColors.textPrimary,
       ),
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
@@ -60,13 +61,20 @@ class _EditarPerfilPageState extends State<EditarPerfilPage> {
             Stack(
               alignment: Alignment.bottomRight,
               children: [
-                const CircleAvatar(
+                CircleAvatar(
                   radius: 55,
-                  backgroundImage: AssetImage('assets/profile.jpg'),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.12),
+                  child: Icon(
+                    Icons.person_rounded,
+                    size: 56,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
                 Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.deepPurple,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
                     shape: BoxShape.circle,
                   ),
                   padding: const EdgeInsets.all(6),
@@ -117,7 +125,7 @@ class _EditarPerfilPageState extends State<EditarPerfilPage> {
               height: 52,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(26),
                   ),
@@ -162,7 +170,10 @@ class _EditarPerfilPageState extends State<EditarPerfilPage> {
           keyboardType: keyboardType,
           onChanged: onChanged,
           decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),

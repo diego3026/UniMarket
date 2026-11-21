@@ -8,9 +8,9 @@ import 'package:dartz/dartz.dart';
 
 class ProductRepositoryImpl implements ProductRepository {
   final ProductRemoteDataSource remoteDataSource;
-  
+
   ProductRepositoryImpl(this.remoteDataSource);
-  
+
   @override
   Future<Either<Failure, List<ProductEntity>>> getProducts() async {
     try {
@@ -21,7 +21,7 @@ class ProductRepositoryImpl implements ProductRepository {
       return Left(ServerFailure('Error al obtener productos: $e'));
     }
   }
-  
+
   @override
   Future<Either<Failure, ProductEntity>> getProductById(String id) async {
     try {
@@ -31,19 +31,23 @@ class ProductRepositoryImpl implements ProductRepository {
       return Left(ServerFailure('Error al obtener producto: $e'));
     }
   }
-  
+
   @override
-  Future<Either<Failure, List<ProductEntity>>> getProductsByCategory(String category) async {
+  Future<Either<Failure, List<ProductEntity>>> getProductsByCategory(
+    String category,
+  ) async {
     // Implementación
     return Left(ServerFailure('No implementado'));
   }
-  
+
   @override
-  Future<Either<Failure, List<ProductEntity>>> searchProducts(String query) async {
+  Future<Either<Failure, List<ProductEntity>>> searchProducts(
+    String query,
+  ) async {
     // Implementación
     return Left(ServerFailure('No implementado'));
   }
-  
+
   @override
   Future<Either<Failure, List<ProductEntity>>> getFeaturedProducts() async {
     try {

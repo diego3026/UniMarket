@@ -1,3 +1,5 @@
+import 'package:unimarket/core/utils/formatters.dart';
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:unimarket/core/injection_container.dart';
@@ -12,12 +14,11 @@ class ManageProductsPage extends StatelessWidget {
     return BlocProvider(
       create: (context) => sl<AdminProductsCubit>()..loadProducts(),
       child: Scaffold(
-        backgroundColor: Colors.white,
         appBar: AppBar(
           title: const Text('Gestionar Productos'),
           backgroundColor: Colors.white,
           elevation: 0,
-          foregroundColor: Colors.black,
+          foregroundColor: AppColors.textPrimary,
         ),
         body: BlocConsumer<AdminProductsCubit, AdminProductsState>(
           listener: (context, state) {
@@ -25,7 +26,7 @@ class ManageProductsPage extends StatelessWidget {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.message),
-                  backgroundColor: Colors.red,
+                  backgroundColor: AppColors.danger,
                 ),
               );
             }
@@ -46,12 +47,15 @@ class ManageProductsPage extends StatelessWidget {
                       Icon(
                         Icons.shopping_bag,
                         size: 64,
-                        color: Colors.grey[300],
+                        color: AppColors.border,
                       ),
                       const SizedBox(height: 16),
                       Text(
                         'No hay productos',
-                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -79,8 +83,10 @@ class ManageProductsPage extends StatelessWidget {
 
   Widget _buildProductCard(BuildContext context, AdminProductModel product) {
     Color statusColor = product.status == 'Activo'
-        ? Colors.green
-        : (product.status == 'Rechazado' ? Colors.red : Colors.orange);
+        ? AppColors.success
+        : (product.status == 'Rechazado'
+              ? AppColors.danger
+              : AppColors.warning);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -88,7 +94,7 @@ class ManageProductsPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -105,12 +111,15 @@ class ManageProductsPage extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     Text(
                       'Vendedor: ${product.seller}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -121,7 +130,7 @@ class ManageProductsPage extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -143,51 +152,61 @@ class ManageProductsPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '\$${product.price.toStringAsFixed(0)}',
+                    formatCop(product.price),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF4B2AAD),
+                      color: AppColors.primary,
                     ),
                   ),
                   Text(
                     'Stock: ${product.stock}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: product.stock > 0 ? Colors.green : Colors.red,
+                      color: product.stock > 0
+                          ? AppColors.success
+                          : AppColors.danger,
                     ),
                   ),
                 ],
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Row(
-                    children: [
-                      ...List.generate(
-                        5,
-                        (i) => Icon(
-                          Icons.star,
-                          color: i < product.rating.toInt()
-                              ? Colors.amber
-                              : Colors.grey[300],
-                          size: 14,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ...List.generate(
+                          5,
+                          (i) => Icon(
+                            Icons.star,
+                            color: i < product.rating.toInt()
+                                ? AppColors.accent
+                                : AppColors.border,
+                            size: 14,
+                          ),
                         ),
+                      ],
+                    ),
+                    Text(
+                      '${product.rating} (${product.reviewCount} opiniones)',
+                      textAlign: TextAlign.end,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
                       ),
-                    ],
-                  ),
-                  Text(
-                    '${product.rating} (${product.reviewCount} opiniones)',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Chip(
             label: Text(product.category),
-            backgroundColor: Colors.blue[100],
+            backgroundColor: AppColors.lightPanel,
           ),
           const SizedBox(height: 12),
           Row(
@@ -198,7 +217,7 @@ class ManageProductsPage extends StatelessWidget {
                   icon: const Icon(Icons.visibility, size: 16),
                   label: const Text('Ver'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF4B2AAD),
+                    foregroundColor: AppColors.primary,
                   ),
                 ),
               ),
@@ -217,8 +236,8 @@ class ManageProductsPage extends StatelessWidget {
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: product.status == 'Activo'
-                        ? Colors.red
-                        : Colors.green,
+                        ? AppColors.danger
+                        : AppColors.success,
                   ),
                 ),
               ),
@@ -243,7 +262,7 @@ class ManageProductsPage extends StatelessWidget {
           children: [
             _buildDetailRow('Vendedor:', product.seller),
             _buildDetailRow('Categoría:', product.category),
-            _buildDetailRow('Precio:', '\$${product.price}'),
+            _buildDetailRow('Precio:', formatCop(product.price)),
             _buildDetailRow('Stock:', '${product.stock} unidades'),
             _buildDetailRow('Rating:', '${product.rating} ⭐'),
             _buildDetailRow('Estado:', product.status),
@@ -263,7 +282,10 @@ class ManageProductsPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
         Text(
           value,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
@@ -286,7 +308,7 @@ class ManageProductsPage extends StatelessWidget {
               ? 'Producto rechazado'
               : 'Producto aprobado',
         ),
-        backgroundColor: Colors.green,
+        backgroundColor: AppColors.success,
       ),
     );
   }

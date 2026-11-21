@@ -9,7 +9,6 @@ class NotificationsCubit extends Cubit<NotificationsState> {
   NotificationsCubit() : super(const NotificationsInitial());
 
   // Mock data - In a real app, this would come from a repository
-  final List<NotificationEntity> _allNotifications = [];
 
   Future<void> loadNotifications(String userId, UserRole userRole) async {
     try {
@@ -111,7 +110,7 @@ class NotificationsCubit extends Cubit<NotificationsState> {
           userId: userId,
           type: 'business_update',
           title: 'Nueva orden recibida',
-          body: 'Has recibido una orden por \$45.99',
+          body: 'Has recibido una orden por \$ 45.990',
           isRead: false,
           createdAt: now.subtract(const Duration(minutes: 30)),
         ),

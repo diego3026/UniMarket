@@ -1,3 +1,4 @@
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:unimarket/core/injection_container.dart';
@@ -13,12 +14,11 @@ class AddressesManagementPage extends StatelessWidget {
     return BlocProvider(
       create: (context) => sl<AddressesCubit>()..loadAddresses(),
       child: Scaffold(
-        backgroundColor: Colors.white,
         appBar: AppBar(
           title: const Text('Mis Direcciones'),
           backgroundColor: Colors.white,
           elevation: 0,
-          foregroundColor: Colors.black,
+          foregroundColor: AppColors.textPrimary,
         ),
         body: BlocConsumer<AddressesCubit, AddressesState>(
           listener: (context, state) {
@@ -58,12 +58,15 @@ class AddressesManagementPage extends StatelessWidget {
                       Icon(
                         Icons.location_off,
                         size: 64,
-                        color: Colors.grey[300],
+                        color: AppColors.border,
                       ),
                       const SizedBox(height: 16),
                       Text(
                         'No hay direcciones registradas',
-                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -86,7 +89,7 @@ class AddressesManagementPage extends StatelessWidget {
           },
         ),
         floatingActionButton: FloatingActionButton(
-          backgroundColor: const Color(0xFF4B2AAD),
+          backgroundColor: AppColors.primary,
           onPressed: () => _showAddAddressDialog(context),
           child: const Icon(Icons.add),
         ),
@@ -102,9 +105,7 @@ class AddressesManagementPage extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: address.isDefault
-              ? const Color(0xFF4B2AAD)
-              : Colors.grey[300]!,
+          color: address.isDefault ? AppColors.primary : AppColors.border,
           width: address.isDefault ? 2 : 1,
         ),
       ),
@@ -119,7 +120,7 @@ class AddressesManagementPage extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: AppColors.textPrimary,
                 ),
               ),
               if (address.isDefault)
@@ -129,7 +130,7 @@ class AddressesManagementPage extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF4B2AAD).withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text(
@@ -137,7 +138,7 @@ class AddressesManagementPage extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF4B2AAD),
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
@@ -146,47 +147,38 @@ class AddressesManagementPage extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             address.address,
-            style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
           Text(
             '${address.city}, ${address.country}',
-            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _showEditAddressDialog(context, address),
-                  icon: const Icon(Icons.edit, size: 16),
-                  label: const Text('Editar'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF4B2AAD),
-                  ),
+              OutlinedButton.icon(
+                onPressed: () => _showEditAddressDialog(context, address),
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Editar'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _confirmDeleteAddress(context, address.id),
+                icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                label: const Text('Eliminar'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.danger,
+                  side: const BorderSide(color: AppColors.danger),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _confirmDeleteAddress(context, address.id),
-                  icon: const Icon(Icons.delete, size: 16),
-                  label: const Text('Eliminar'),
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                ),
-              ),
-              if (!address.isDefault) const SizedBox(width: 8),
               if (!address.isDefault)
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => context
-                        .read<AddressesCubit>()
-                        .setDefaultAddress(address.id),
-                    icon: const Icon(Icons.check, size: 16),
-                    label: const Text('Por defecto'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.green,
-                    ),
-                  ),
+                TextButton.icon(
+                  onPressed: () => context
+                      .read<AddressesCubit>()
+                      .setDefaultAddress(address.id),
+                  icon: const Icon(Icons.check_rounded, size: 18),
+                  label: const Text('Usar por defecto'),
                 ),
             ],
           ),
@@ -258,9 +250,7 @@ class AddressesManagementPage extends StatelessWidget {
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4B2AAD),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             onPressed: () {
               context.read<AddressesCubit>().addAddress(
                 label: nameController.text,
@@ -343,9 +333,7 @@ class AddressesManagementPage extends StatelessWidget {
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4B2AAD),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             onPressed: () {
               context.read<AddressesCubit>().updateAddress(
                 id: address.id,
@@ -378,7 +366,7 @@ class AddressesManagementPage extends StatelessWidget {
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () {
               context.read<AddressesCubit>().deleteAddress(id);
               Navigator.pop(dialogContext);

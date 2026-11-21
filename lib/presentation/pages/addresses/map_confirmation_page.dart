@@ -1,3 +1,4 @@
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../../viewmodels/addresses/map_confirmation_viewmodel.dart';
 import 'package:unimarket/core/utils/notification_helper.dart';
@@ -39,15 +40,17 @@ class _MapConfirmationPageState extends State<MapConfirmationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
           'Confirmar ubicación',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         backgroundColor: Colors.white,
@@ -63,7 +66,7 @@ class _MapConfirmationPageState extends State<MapConfirmationPage> {
               const SizedBox(height: 8),
               Text(
                 'Confirma y ajusta los detalles de tu ubicación',
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 16),
               _buildMapPreview(),
@@ -86,19 +89,23 @@ class _MapConfirmationPageState extends State<MapConfirmationPage> {
     return Container(
       height: 160,
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
+        color: AppColors.border,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: AppColors.border),
       ),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.map_outlined, size: 48, color: Colors.grey),
+            const Icon(
+              Icons.map_outlined,
+              size: 48,
+              color: AppColors.textSecondary,
+            ),
             const SizedBox(height: 8),
             Text(
               vm.mainAddress,
-              style: const TextStyle(color: Colors.black87),
+              style: const TextStyle(color: AppColors.textPrimary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -116,7 +123,7 @@ class _MapConfirmationPageState extends State<MapConfirmationPage> {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Colors.black87,
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 8),
@@ -126,15 +133,15 @@ class _MapConfirmationPageState extends State<MapConfirmationPage> {
             hintText: 'Ingresa tu dirección completa',
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade400),
+              borderSide: BorderSide(color: AppColors.textMuted),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade400),
+              borderSide: BorderSide(color: AppColors.textMuted),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF4B2AAD), width: 2),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
             ),
             filled: true,
             fillColor: Colors.white,
@@ -157,7 +164,7 @@ class _MapConfirmationPageState extends State<MapConfirmationPage> {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Colors.black87,
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 8),
@@ -167,15 +174,15 @@ class _MapConfirmationPageState extends State<MapConfirmationPage> {
             hintText: 'Ej: Apartamento 301, Oficina 4B',
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade400),
+              borderSide: BorderSide(color: AppColors.textMuted),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade400),
+              borderSide: BorderSide(color: AppColors.textMuted),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF4B2AAD), width: 2),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
             ),
             filled: true,
             fillColor: Colors.white,
@@ -198,7 +205,7 @@ class _MapConfirmationPageState extends State<MapConfirmationPage> {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Colors.black87,
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 8),
@@ -209,15 +216,15 @@ class _MapConfirmationPageState extends State<MapConfirmationPage> {
             hintText: 'Instrucciones adicionales (opcional)',
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade400),
+              borderSide: BorderSide(color: AppColors.textMuted),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade400),
+              borderSide: BorderSide(color: AppColors.textMuted),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF4B2AAD), width: 2),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
             ),
             filled: true,
             fillColor: Colors.white,
@@ -251,7 +258,7 @@ class _MapConfirmationPageState extends State<MapConfirmationPage> {
           Navigator.pop(context, vm.mainAddress);
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF4B2AAD),
+          backgroundColor: AppColors.primary,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),

@@ -4,17 +4,11 @@ class CartItem {
   final ProductEntity product;
   int quantity;
 
-  CartItem({
-    required this.product,
-    this.quantity = 1,
-  });
+  CartItem({required this.product, this.quantity = 1});
 
-  double get totalPrice => product.price * quantity;
+  double get totalPrice => product.finalPrice * quantity;
 
-  CartItem copyWith({
-    ProductEntity? product,
-    int? quantity,
-  }) {
+  CartItem copyWith({ProductEntity? product, int? quantity}) {
     return CartItem(
       product: product ?? this.product,
       quantity: quantity ?? this.quantity,
@@ -26,8 +20,9 @@ class CartItem {
       identical(this, other) ||
       other is CartItem &&
           runtimeType == other.runtimeType &&
-          product.id == other.product.id;
+          product.id == other.product.id &&
+          quantity == other.quantity;
 
   @override
-  int get hashCode => product.id.hashCode;
+  int get hashCode => Object.hash(product.id, quantity);
 }

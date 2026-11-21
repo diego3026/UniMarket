@@ -1,3 +1,4 @@
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import 'package:unimarket/core/injection_container.dart';
@@ -44,7 +45,7 @@ class _AppPreferencesPageState extends State<AppPreferencesPage> {
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         backgroundColor: isDarkMode ? const Color(0xFF1B1B1B) : Colors.white,
-        foregroundColor: isDarkMode ? Colors.white : Colors.black,
+        foregroundColor: isDarkMode ? Colors.white : AppColors.textPrimary,
         elevation: 0,
       ),
       backgroundColor: isDarkMode ? const Color(0xFF121212) : Colors.white,
@@ -54,63 +55,88 @@ class _AppPreferencesPageState extends State<AppPreferencesPage> {
           SwitchListTile(
             title: Text(
               'Reproducción automática',
-              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : AppColors.textPrimary,
+              ),
             ),
             subtitle: Text(
               'Recarga el catálogo automáticamente al volver a Inicio',
               style: TextStyle(
-                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                color: isDarkMode
+                    ? AppColors.textMuted
+                    : AppColors.textSecondary,
               ),
             ),
             value: prefs.autoPlay,
             onChanged: (val) => prefs.toggleAutoPlay(val),
-            activeThumbColor: const Color(0xFF4B2AAD),
+            activeThumbColor: Theme.of(context).colorScheme.primary,
           ),
-          Divider(color: isDarkMode ? Colors.grey[700] : Colors.grey[300]),
+          Divider(
+            color: isDarkMode ? AppColors.textSecondary : AppColors.border,
+          ),
           SwitchListTile(
             title: Text(
               'Mantener historial de búsqueda',
-              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : AppColors.textPrimary,
+              ),
             ),
             subtitle: Text(
               'Guarda tus búsquedas anteriores',
               style: TextStyle(
-                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                color: isDarkMode
+                    ? AppColors.textMuted
+                    : AppColors.textSecondary,
               ),
             ),
             value: prefs.keepSearchHistory,
             onChanged: (val) => prefs.toggleKeepSearchHistory(val),
-            activeThumbColor: const Color(0xFF4B2AAD),
+            activeThumbColor: Theme.of(context).colorScheme.primary,
           ),
-          Divider(color: isDarkMode ? Colors.grey[700] : Colors.grey[300]),
+          Divider(
+            color: isDarkMode ? AppColors.textSecondary : AppColors.border,
+          ),
           SwitchListTile(
             title: Text(
               'Recomendaciones personalizadas',
-              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : AppColors.textPrimary,
+              ),
             ),
             subtitle: Text(
               'Recibe sugerencias basadas en tus gustos',
               style: TextStyle(
-                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                color: isDarkMode
+                    ? AppColors.textMuted
+                    : AppColors.textSecondary,
               ),
             ),
             value: prefs.personalizedRecommendations,
             onChanged: (val) => prefs.togglePersonalizedRecommendations(val),
-            activeThumbColor: const Color(0xFF4B2AAD),
+            activeThumbColor: Theme.of(context).colorScheme.primary,
           ),
-          Divider(color: isDarkMode ? Colors.grey[700] : Colors.grey[300]),
+          Divider(
+            color: isDarkMode ? AppColors.textSecondary : AppColors.border,
+          ),
           ListTile(
             title: Text(
               'Idioma',
-              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : AppColors.textPrimary,
+              ),
             ),
             subtitle: Text(
               prefs.languageLabel,
               style: TextStyle(
-                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                color: isDarkMode
+                    ? AppColors.textMuted
+                    : AppColors.textSecondary,
               ),
             ),
-            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+            trailing: const Icon(
+              Icons.chevron_right,
+              color: AppColors.textSecondary,
+            ),
             onTap: () {
               showDialog(
                 context: context,
@@ -121,7 +147,7 @@ class _AppPreferencesPageState extends State<AppPreferencesPage> {
                   title: Text(
                     'Selecciona un idioma',
                     style: TextStyle(
-                      color: isDarkMode ? Colors.white : Colors.black,
+                      color: isDarkMode ? Colors.white : AppColors.textPrimary,
                     ),
                   ),
                   content: Column(
@@ -132,17 +158,26 @@ class _AppPreferencesPageState extends State<AppPreferencesPage> {
                         'Português' => 'pt',
                         _ => 'es',
                       };
-                      return RadioListTile(
+                      final selected = prefs.languageCode == value;
+                      return ListTile(
+                        leading: Icon(
+                          selected
+                              ? Icons.radio_button_checked_rounded
+                              : Icons.radio_button_off_rounded,
+                          color: selected
+                              ? Theme.of(context).colorScheme.primary
+                              : AppColors.textMuted,
+                        ),
                         title: Text(
                           lang,
                           style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black,
+                            color: isDarkMode
+                                ? Colors.white
+                                : AppColors.textPrimary,
                           ),
                         ),
-                        value: value,
-                        groupValue: prefs.languageCode,
-                        onChanged: (val) {
-                          prefs.setLanguage(val!);
+                        onTap: () {
+                          prefs.setLanguage(value);
                           Navigator.pop(ctx);
                         },
                       );

@@ -14,7 +14,7 @@ class RegistrationCubit extends Cubit<RegistrationState> {
   }) async {
     emit(RegistrationLoading());
     await Future.delayed(const Duration(seconds: 1));
-    
+
     // Validaciones
     if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
       emit(RegistrationFailure('Por favor completa todos los campos'));
@@ -37,12 +37,18 @@ class RegistrationCubit extends Cubit<RegistrationState> {
     }
 
     if (password.length < 6) {
-      emit(RegistrationFailure('La contraseña debe tener al menos 6 caracteres'));
+      emit(
+        RegistrationFailure('La contraseña debe tener al menos 6 caracteres'),
+      );
       return;
     }
 
     if (!_isStrongPassword(password)) {
-      emit(RegistrationFailure('La contraseña debe contener letras, números y caracteres especiales'));
+      emit(
+        RegistrationFailure(
+          'La contraseña debe contener letras, números y caracteres especiales',
+        ),
+      );
       return;
     }
 

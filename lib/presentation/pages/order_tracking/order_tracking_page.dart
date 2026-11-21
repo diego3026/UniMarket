@@ -1,500 +1,642 @@
 import 'package:flutter/material.dart';
-import 'package:unimarket/core/injection_container.dart';
-import '../../viewmodels/order_tracking/order_tracking_viewmodel.dart';
-import 'package:unimarket/presentation/viewmodels/profile/order_preferences_controller.dart';
-import 'package:unimarket/domain/entities/order_entity.dart';
-import 'package:unimarket/domain/entities/address_entity.dart';
-import 'package:unimarket/domain/entities/shipping_option_entity.dart';
-import '../order_confirmation/order_confirmation_page.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
+import '../../../constants/app_colors.dart';
+import '../../../core/router/app_routes.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../data/datasources/mock/market_mock_data.dart';
+import '../../../domain/entities/market_entities.dart';
+import '../../viewmodels/market/market_cubits.dart';
+import '../../widgets/ui/app_widgets.dart';
+import '../../widgets/ui/campus_map.dart';
+import '../../widgets/ui/product_image.dart';
+
+/// Seguimiento de un pedido (domicilio o para recoger).
+///
+/// Lo más importante arriba: estado y tiempo estimado; luego el mapa con la
+/// tienda, el destino y el repartidor; la línea de tiempo; y al final el
+/// detalle y las acciones (cancelar, confirmar entrega, calificar).
 class OrderTrackingPage extends StatefulWidget {
-  const OrderTrackingPage({super.key});
+  final String orderId;
+  const OrderTrackingPage({super.key, required this.orderId});
 
   @override
   State<OrderTrackingPage> createState() => _OrderTrackingPageState();
 }
 
-class _OrderTrackingPageState extends State<OrderTrackingPage> {
-  final OrderTrackingViewModel vm = OrderTrackingViewModel();
-  late final OrderPreferencesController _prefs;
+class _OrderTrackingPageState extends State<OrderTrackingPage>
+    with SingleTickerProviderStateMixin {
+  /// Ubicación aproximada del cliente (en la app real vendría del GPS).
+  static const _myPlace = 'b8';
 
-  @override
-  void initState() {
-    super.initState();
-    _prefs = sl<OrderPreferencesController>();
-    _prefs.addListener(_onPrefsChanged);
-    vm.addListener(_onVmChanged);
-  }
-
-  void _onVmChanged() => setState(() {});
-
-  void _onPrefsChanged() {
-    if (mounted) {
-      setState(() {});
-    }
-  }
+  late final AnimationController _courier = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 9),
+  )..repeat();
 
   @override
   void dispose() {
-    _prefs.removeListener(_onPrefsChanged);
-    vm.removeListener(_onVmChanged);
-    vm.dispose();
+    _courier.dispose();
     super.dispose();
+  }
+
+  (String, String) _headline(MarketOrder o, StoreSettings s) =>
+      switch (o.status) {
+        OrderStatus.pending => (
+          'Esperando confirmación',
+          '${o.storeName} revisará tu pedido en un momento',
+        ),
+        OrderStatus.preparing => (
+          'Preparando tu pedido',
+          o.mode == FulfillmentMode.pickup
+              ? 'Listo para recoger en ~${s.prepMinutes} min'
+              : 'Sale hacia ti en ~${s.prepMinutes} min',
+        ),
+        OrderStatus.ready => (
+          '¡Listo para recoger!',
+          'Muestra tu código en ${MarketMockData.place(s.pickupPlaceId).name}',
+        ),
+        OrderStatus.onTheWay => (
+          'Tu pedido va en camino',
+          'Llega en ~8 min a ${MarketMockData.place(o.placeId).name}',
+        ),
+        OrderStatus.delivered => (
+          'Pedido entregado',
+          '¡Gracias por apoyar a ${o.storeName}!',
+        ),
+        OrderStatus.cancelled => (
+          'Pedido cancelado',
+          'No se realizó ningún cobro',
+        ),
+      };
+
+  Color _statusColor(OrderStatus s) => switch (s) {
+    OrderStatus.pending => AppColors.warning,
+    OrderStatus.preparing => AppColors.info,
+    OrderStatus.ready || OrderStatus.onTheWay => AppColors.primary,
+    OrderStatus.delivered => AppColors.success,
+    OrderStatus.cancelled => AppColors.danger,
+  };
+
+  IconData _statusIcon(OrderStatus s) => switch (s) {
+    OrderStatus.pending => Icons.hourglass_top_rounded,
+    OrderStatus.preparing => Icons.soup_kitchen_rounded,
+    OrderStatus.ready => Icons.shopping_bag_rounded,
+    OrderStatus.onTheWay => Icons.delivery_dining_rounded,
+    OrderStatus.delivered => Icons.check_circle_rounded,
+    OrderStatus.cancelled => Icons.cancel_rounded,
+  };
+
+  Future<void> _confirmCancel(MarketOrder o) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Cancelar el pedido?'),
+        content: Text(
+          '${o.storeName} aún no lo ha aceptado, así que no tiene costo.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Mantener pedido'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              minimumSize: const Size(0, 44),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Cancelar pedido'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && mounted) context.read<MarketOrdersCubit>().cancel(o.id);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: _buildAppBar(),
-      body: _buildBody(),
-    );
-  }
-
-  AppBar _buildAppBar() {
-    return AppBar(
-      title: Text(
-        vm.restaurantName,
-        style: const TextStyle(
-          color: Colors.black,
-          fontWeight: FontWeight.bold,
-          fontSize: 20,
-        ),
-      ),
-      centerTitle: true,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.black),
-        onPressed: () => Navigator.of(context).pop(),
-      ),
-      backgroundColor: Colors.white,
-      elevation: 1,
-    );
-  }
-
-  Widget _buildBody() {
-    return Column(
-      children: [
-        _buildDeliveryOptions(),
-        if (_prefs.notifyEstimatedArrival) _buildEtaBanner(),
-        Expanded(child: _buildMapPlaceholder()),
-        _buildOrderStatus(),
-        _buildConfirmButton(),
-      ],
-    );
-  }
-
-  Widget _buildEtaBanner() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF4B2AAD).withOpacity(0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF4B2AAD).withOpacity(0.15)),
-        ),
-        child: Row(
-          children: const [
-            Icon(Icons.schedule_outlined, color: Color(0xFF4B2AAD)),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Recibirás estimaciones de llegada mientras el pedido esté en seguimiento.',
-                style: TextStyle(fontSize: 13, height: 1.3),
-              ),
+    final t = Theme.of(context).textTheme;
+    return BlocBuilder<MarketOrdersCubit, List<MarketOrder>>(
+      builder: (context, _) {
+        final o = context.read<MarketOrdersCubit>().byId(widget.orderId);
+        if (o == null) {
+          return Scaffold(
+            appBar: AppBar(),
+            body: const EmptyState(
+              icon: Icons.receipt_long_outlined,
+              title: 'Pedido no encontrado',
+              message: 'Puede que se haya eliminado.',
             ),
-          ],
-        ),
-      ),
-    );
-  }
+          );
+        }
+        final s = context.watch<StoreSettingsCubit>().of(o.storeId);
+        final (title, subtitle) = _headline(o, s);
+        final color = _statusColor(o.status);
+        final isPickup = o.mode == FulfillmentMode.pickup;
+        final storePlace = s.pickupPlaceId;
+        final showMe = _myPlace != storePlace;
 
-  Widget _buildDeliveryOptions() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () => vm.toggleDelivery(true),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: vm.isDeliverySelected
-                      ? const Color(0xFF4B2AAD)
-                      : Colors.grey.shade200,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(12),
-                    bottomLeft: Radius.circular(12),
-                  ),
+        return Scaffold(
+          appBar: AppBar(
+            title: Text('Pedido #${o.id}'),
+            actions: [
+              if (o.next != null)
+                PopupMenuButton<String>(
+                  tooltip: 'Más opciones',
+                  onSelected: (_) =>
+                      context.read<MarketOrdersCubit>().advance(o.id),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: 'demo',
+                      child: Text('Simular siguiente estado (demo)'),
+                    ),
+                  ],
                 ),
-                child: Center(
-                  child: Text(
-                    'Domicilio',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: vm.isDeliverySelected
-                          ? Colors.white
-                          : Colors.black87,
+            ],
+          ),
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppTheme.pagePadding,
+              0,
+              AppTheme.pagePadding,
+              24,
+            ),
+            children: [
+              // Estado principal
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(_statusIcon(o.status), color: Colors.white),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: t.titleLarge),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            style: t.bodyMedium?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Código de recogida
+              if (isPickup && o.status.isActive)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: SurfaceCard(
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.qr_code_2_rounded,
+                          size: 40,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Código para recoger', style: t.bodySmall),
+                              Text(
+                                o.pickupCode.split('').join(' '),
+                                style: t.headlineMedium?.copyWith(
+                                  letterSpacing: 4,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          'Muéstralo al\nemprendedor',
+                          textAlign: TextAlign.right,
+                          style: t.bodySmall,
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ),
-            ),
-          ),
 
-          Expanded(
-            child: GestureDetector(
-              onTap: () => vm.toggleDelivery(false),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: !vm.isDeliverySelected
-                      ? const Color(0xFF4B2AAD)
-                      : Colors.grey.shade200,
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(12),
-                    bottomRight: Radius.circular(12),
+              // Mapa
+              if (o.status != OrderStatus.cancelled)
+                AnimatedBuilder(
+                  animation: _courier,
+                  builder: (context, _) => CampusMap(
+                    height: 230,
+                    // Recoger: ruta desde donde estás hasta la tienda.
+                    routeFrom: isPickup
+                        ? (showMe ? _myPlace : null)
+                        : storePlace,
+                    routeTo: isPickup
+                        ? (showMe ? storePlace : null)
+                        : o.placeId,
+                    courierProgress: o.status == OrderStatus.onTheWay
+                        ? 0.15 + 0.7 * _courier.value
+                        : null,
+                    selectedPlaceId: isPickup ? storePlace : o.placeId,
+                    pins: [
+                      MapPin(
+                        placeId: storePlace,
+                        icon: Icons.storefront_rounded,
+                        color: AppColors.seller,
+                        label: o.storeName,
+                      ),
+                      if (!isPickup)
+                        MapPin(
+                          placeId: o.placeId,
+                          icon: Icons.home_rounded,
+                          color: AppColors.primary,
+                          label: 'Entrega',
+                        ),
+                      if (isPickup && showMe)
+                        MapPin(
+                          placeId: _myPlace,
+                          icon: Icons.person_rounded,
+                          color: AppColors.info,
+                          label: 'Tú',
+                        ),
+                    ],
                   ),
                 ),
-                child: Center(
-                  child: Text(
-                    'Ir a recoger',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: !vm.isDeliverySelected
-                          ? Colors.white
-                          : Colors.black87,
+              if (o.status != OrderStatus.cancelled) const SizedBox(height: 14),
+
+              // Línea de tiempo
+              SurfaceCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Estado del pedido', style: t.titleMedium),
+                    const SizedBox(height: 12),
+                    for (final (i, step)
+                        in (o.status == OrderStatus.cancelled
+                                ? [OrderStatus.pending, OrderStatus.cancelled]
+                                : o.flow)
+                            .indexed)
+                      _TimelineTile(
+                        status: step,
+                        isPickup: isPickup,
+                        time: o.history[step],
+                        done: o.history.containsKey(step),
+                        current: o.status == step,
+                        last:
+                            i ==
+                            (o.status == OrderStatus.cancelled
+                                ? 1
+                                : o.flow.length - 1),
+                        color: step == OrderStatus.cancelled
+                            ? AppColors.danger
+                            : AppColors.primary,
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Tienda
+              SurfaceCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        ClipOval(
+                          child: ProductImage(
+                            imageUrl: '',
+                            category: o.category,
+                            width: 46,
+                            height: 46,
+                            radius: 0,
+                            iconSize: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(o.storeName, style: t.titleMedium),
+                              Text(
+                                isPickup
+                                    ? '${MarketMockData.place(storePlace).name} · ${s.pickupNotes}'
+                                    : 'Entrega en ${MarketMockData.place(o.placeId).name}${o.notes.isEmpty ? '' : ' · ${o.notes}'}',
+                                style: t.bodySmall,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () =>
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Llamando a ${o.storeName} · ${s.phone}',
+                                    ),
+                                  ),
+                                ),
+                            icon: const Icon(Icons.call_outlined, size: 18),
+                            label: const Text('Llamar'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () =>
+                                context.push(AppRoutes.storePath(o.storeId)),
+                            icon: const Icon(
+                              Icons.storefront_outlined,
+                              size: 18,
+                            ),
+                            label: const Text('Ver tienda'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+              const SizedBox(height: 14),
 
-  Widget _buildMapPlaceholder() {
-    return Container(
-      color: Colors.grey.shade100,
-      child: Stack(
-        children: [
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.map_outlined, size: 80, color: Colors.grey),
-                const SizedBox(height: 16),
-                Text(
-                  'Mapa de seguimiento',
-                  style: TextStyle(fontSize: 18, color: Colors.grey.shade700),
+              // Detalle
+              SurfaceCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Detalle', style: t.titleMedium),
+                    const SizedBox(height: 8),
+                    for (final l in o.lines)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Row(
+                          children: [
+                            Text(
+                              '${l.quantity}×',
+                              style: t.titleSmall?.copyWith(
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(l.name)),
+                            Text(formatCop(l.total)),
+                          ],
+                        ),
+                      ),
+                    const Divider(height: 20),
+                    if (o.couponDiscount > 0)
+                      _row(
+                        t,
+                        'Cupón ${o.couponCode}',
+                        '-${formatCop(o.couponDiscount)}',
+                        AppColors.success,
+                      ),
+                    _row(
+                      t,
+                      isPickup ? 'Recoger en tienda' : 'Domicilio',
+                      o.deliveryFee == 0 ? 'Gratis' : formatCop(o.deliveryFee),
+                      null,
+                    ),
+                    _row(t, 'Pago', o.paymentLabel, null),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text('Total', style: t.titleMedium),
+                        const Spacer(),
+                        Text(
+                          formatCop(o.total),
+                          style: t.titleLarge?.copyWith(
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Mostrando ruta hacia tu ubicación',
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              ),
+              if (o.rating != null) ...[
+                const SizedBox(height: 14),
+                SurfaceCard(
+                  child: Row(
+                    children: [
+                      ...List.generate(
+                        5,
+                        (i) => Icon(
+                          i < o.rating!
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
+                          color: AppColors.accent,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          o.review.isEmpty
+                              ? 'Calificaste este pedido'
+                              : '“${o.review}”',
+                          style: t.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
-            ),
+            ],
           ),
-
-          Positioned(
-            top: 100,
-            left: 50,
-            child: _buildMapMarker('Inicio', Icons.location_on, Colors.blue),
-          ),
-
-          Positioned(
-            top: 200,
-            left: 150,
-            child: _buildMapMarker(
-              'Jeikol Pizza',
-              Icons.restaurant,
-              Colors.red,
-            ),
-          ),
-
-          Positioned(
-            top: 120,
-            left: 70,
-            child: CustomPaint(
-              size: const Size(100, 80),
-              painter: RoutePainter(),
-            ),
-          ),
-        ],
-      ),
+          bottomNavigationBar: _actions(context, o),
+        );
+      },
     );
   }
 
-  Widget _buildMapMarker(String label, IconData icon, Color color) {
-    return Column(
+  Widget _row(TextTheme t, String a, String b, Color? c) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 3),
+    child: Row(
       children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromRGBO(0, 0, 0, 0.12),
-                blurRadius: 6,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: Icon(icon, color: Colors.white, size: 24),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromRGBO(0, 0, 0, 0.12),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        Text(a, style: t.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+        const Spacer(),
+        Text(
+          b,
+          style: t.bodyMedium?.copyWith(
+            color: c,
+            fontWeight: c != null ? FontWeight.w700 : null,
           ),
         ),
       ],
-    );
-  }
+    ),
+  );
 
-  Widget _buildOrderStatus() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Colors.grey, width: 0.5),
-          bottom: BorderSide(color: Colors.grey, width: 0.5),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Estado de pedido',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+  Widget? _actions(BuildContext context, MarketOrder o) {
+    final cubit = context.read<MarketOrdersCubit>();
+    switch (o.status) {
+      case OrderStatus.pending:
+        return BottomActionBar(
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.danger,
+              side: const BorderSide(color: AppColors.danger),
+              minimumSize: const Size.fromHeight(52),
+            ),
+            onPressed: () => _confirmCancel(o),
+            child: const Text('Cancelar pedido'),
+          ),
+        );
+      case OrderStatus.ready:
+      case OrderStatus.onTheWay:
+        return BottomActionBar(
+          child: FilledButton.icon(
+            onPressed: () => cubit.advance(o.id),
+            icon: const Icon(Icons.check_rounded),
+            label: Text(
+              o.status == OrderStatus.ready
+                  ? 'Ya recogí mi pedido'
+                  : 'Ya recibí mi pedido',
             ),
           ),
-
-          const SizedBox(height: 16),
-
-          _buildTimeline(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeline() {
-    final steps = vm.steps;
-    return Column(
-      children: steps.asMap().entries.map((entry) {
-        final int index = entry.key;
-        final TimelineStep step = entry.value;
-        return _buildTimelineStep(step, index, steps.length);
-      }).toList(),
-    );
-  }
-
-  Widget _buildTimelineStep(TimelineStep step, int index, int totalSteps) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Column(
-          children: [
-            Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                color: step.isCompleted
-                    ? const Color(0xFF4B2AAD)
-                    : Colors.grey.shade300,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: step.isActive
-                      ? const Color(0xFF4B2AAD)
-                      : Colors.transparent,
-                  width: 2,
-                ),
-              ),
-              child: step.isCompleted
-                  ? const Icon(Icons.check, size: 12, color: Colors.white)
-                  : null,
-            ),
-
-            if (index < totalSteps - 1)
-              Container(
-                width: 2,
-                height: 40,
-                color: step.isCompleted
-                    ? const Color(0xFF4B2AAD)
-                    : Colors.grey.shade300,
-              ),
-          ],
-        ),
-
-        const SizedBox(width: 12),
-
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (step.title.isNotEmpty)
-                Text(
-                  step.title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: step.isActive
-                        ? Colors.black87
-                        : Colors.grey.shade600,
-                  ),
-                ),
-
-              Text(
-                step.subtitle,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: step.isActive
-                      ? Colors.grey.shade700
-                      : Colors.grey.shade500,
-                ),
-              ),
-
-              const SizedBox(height: 8),
-            ],
+        );
+      case OrderStatus.delivered:
+        if (o.rating != null) return null;
+        return BottomActionBar(
+          child: FilledButton.icon(
+            onPressed: () => context.push(AppRoutes.orderReviewPath(o.id)),
+            icon: const Icon(Icons.star_rounded),
+            label: Text('Calificar a ${o.storeName}'),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildConfirmButton() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: ElevatedButton(
-          onPressed: () {
-            // Navigate to full-screen confirmation
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (_) => OrderConfirmationPage(order: _buildMockOrder()),
-              ),
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF4B2AAD),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            elevation: 2,
-          ),
-          child: const Text(
-            'Confirmar',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Bottom navigation replaced by shared BottomNavCustom
-
-  OrderEntity _buildMockOrder() {
-    return OrderEntity(
-      id: 'ORD-${DateTime.now().millisecondsSinceEpoch}',
-      userId: 'user_123',
-      storeId: 'store_001',
-      storeName: 'UNIMARKET Store',
-      items: const [],
-      deliveryAddress: AddressEntity(
-        id: '1',
-        userId: 'user_123',
-        fullName: 'Juan Pérez',
-        phone: '3001234567',
-        street: 'Calle 45 #23-67',
-        city: 'Bogotá',
-        state: 'Cundinamarca',
-        zipCode: '110111',
-        country: 'Colombia',
-        isDefault: true,
-        createdAt: DateTime.now(),
-      ),
-      shippingOption: const ShippingOptionEntity(
-        id: '1',
-        name: 'Envío Estándar',
-        description: 'Entrega en 5-7 días',
-        cost: 15000,
-        estimatedDays: 6,
-      ),
-      subtotal: 0,
-      shippingCost: 15000,
-      taxAmount: 0,
-      totalAmount: 15000,
-      status: OrderStatus.pending,
-      paymentMethod: 'credit_card',
-      createdAt: DateTime.now(),
-    );
+        );
+      case OrderStatus.preparing:
+      case OrderStatus.cancelled:
+        return null;
+    }
   }
 }
 
-class RoutePainter extends CustomPainter {
+class _TimelineTile extends StatelessWidget {
+  final OrderStatus status;
+  final bool isPickup;
+  final DateTime? time;
+  final bool done;
+  final bool current;
+  final bool last;
+  final Color color;
+
+  const _TimelineTile({
+    required this.status,
+    required this.isPickup,
+    required this.time,
+    required this.done,
+    required this.current,
+    required this.last,
+    required this.color,
+  });
+
+  String get _title => switch (status) {
+    OrderStatus.pending => 'Pedido enviado',
+    OrderStatus.preparing => 'Aceptado y en preparación',
+    OrderStatus.ready => 'Listo para recoger',
+    OrderStatus.onTheWay => 'En camino',
+    OrderStatus.delivered => isPickup ? 'Recogido' : 'Entregado',
+    OrderStatus.cancelled => 'Cancelado',
+  };
+
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF4B2AAD)
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final path = Path();
-    path.moveTo(0, 0);
-    path.quadraticBezierTo(
-      size.width * 0.3,
-      size.height * 0.3,
-      size.width * 0.7,
-      size.height * 0.5,
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final c = done ? color : AppColors.border;
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 28,
+            child: Column(
+              children: [
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: done ? c : Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: c, width: 2),
+                    boxShadow: current
+                        ? [
+                            BoxShadow(
+                              color: c.withValues(alpha: 0.4),
+                              blurRadius: 8,
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: done
+                      ? const Icon(
+                          Icons.check_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        )
+                      : null,
+                ),
+                if (!last) Expanded(child: Container(width: 2, color: c)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 18),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _title,
+                      style: t.titleSmall?.copyWith(
+                        color: done
+                            ? AppColors.textPrimary
+                            : AppColors.textMuted,
+                        fontWeight: current ? FontWeight.w800 : FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (time != null)
+                    Text(
+                      DateFormat('h:mm a', 'es_CO').format(time!),
+                      style: t.bodySmall,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
-    path.quadraticBezierTo(
-      size.width * 0.9,
-      size.height * 0.7,
-      size.width,
-      size.height,
-    );
-
-    canvas.drawPath(path, paint);
-
-    final dotPaint = Paint()
-      ..color = const Color(0xFF4B2AAD)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(const Offset(20, 5), 4, dotPaint);
-    canvas.drawCircle(Offset(size.width * 0.5, size.height * 0.4), 4, dotPaint);
-    canvas.drawCircle(Offset(size.width, size.height), 4, dotPaint);
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

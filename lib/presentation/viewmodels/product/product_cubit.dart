@@ -10,6 +10,28 @@ class ProductCubit extends Cubit<ProductState> {
 
   ProductCubit(this.getProductsUseCase) : super(ProductInitial());
 
+  /// Catálogo sin descuentos y función que calcula el precio con promociones.
+  List<ProductEntity> _base = [];
+  double? Function(ProductEntity product)? _pricing;
+
+  /// Recalcula los precios cuando el emprendedor cambia sus promociones.
+  void applyPricing(double? Function(ProductEntity product) pricing) {
+    _pricing = pricing;
+    if (_base.isNotEmpty) emit(ProductLoaded(_priced()));
+  }
+
+  List<ProductEntity> _priced() {
+    final f = _pricing;
+    if (f == null) return _base;
+    return [
+      for (final p in _base)
+        () {
+          final d = f(p);
+          return p.withDiscount(d != null && d < p.price ? d : null);
+        }(),
+    ];
+  }
+
   Future<void> loadProducts() async {
     emit(ProductLoading());
 
@@ -18,10 +40,11 @@ class ProductCubit extends Cubit<ProductState> {
     result.fold((failure) => emit(ProductError(failure.toString())), (
       products,
     ) {
+      _base = products;
       if (products.isEmpty) {
         emit(ProductEmpty());
       } else {
-        emit(ProductLoaded(products));
+        emit(ProductLoaded(_priced()));
       }
     });
   }

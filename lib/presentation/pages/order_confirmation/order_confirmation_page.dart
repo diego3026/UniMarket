@@ -1,152 +1,112 @@
 import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart';
-import 'package:unimarket/domain/entities/order_entity.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
-class OrderConfirmationPage extends StatefulWidget {
-  final dynamic order; // OrderEntity
+import '../../../constants/app_colors.dart';
+import '../../../core/router/app_routes.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../data/datasources/mock/market_mock_data.dart';
+import '../../../domain/entities/market_entities.dart';
+import '../../viewmodels/market/market_cubits.dart';
 
-  const OrderConfirmationPage({super.key, required this.order});
+/// Pedido realizado (Figma: "Exitoso pedido").
+class OrderConfirmationPage extends StatelessWidget {
+  final String orderId;
+  const OrderConfirmationPage({super.key, required this.orderId});
 
-  @override
-  State<OrderConfirmationPage> createState() => _OrderConfirmationPageState();
-}
-
-class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
   @override
   Widget build(BuildContext context) {
-    final orderEntity = widget.order as OrderEntity;
+    final t = Theme.of(context).textTheme;
+    final o = context.watch<MarketOrdersCubit>().byId(orderId);
+    if (o == null) return const Scaffold(body: SizedBox());
+    final s = context.watch<StoreSettingsCubit>().of(o.storeId);
+    final pickup = o.mode == FulfillmentMode.pickup;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(
-                  child: SizedBox(
-                    height: 180,
-                    child: Lottie.network(
-                      'https://assets10.lottiefiles.com/packages/lf20_touohxv0.json',
-                      fit: BoxFit.contain,
-                      repeat: false,
-                    ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              const Spacer(),
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.4, end: 1),
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.elasticOut,
+                builder: (_, v, child) =>
+                    Transform.scale(scale: v, child: child),
+                child: Container(
+                  width: 110,
+                  height: 110,
+                  decoration: const BoxDecoration(
+                    color: AppColors.successLight,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    size: 72,
+                    color: AppColors.success,
                   ),
                 ),
-                const SizedBox(height: 12),
-                const Text(
-                  '¡Pedido Confirmado!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                '¡Pedido enviado!',
+                style: t.headlineMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                pickup
+                    ? '${o.storeName} lo tendrá listo en ~${s.prepMinutes} min en ${MarketMockData.place(s.pickupPlaceId).name}.'
+                    : '${o.storeName} confirmará tu pedido y te lo llevará a ${MarketMockData.place(o.placeId).name}.',
+                style: t.bodyLarge?.copyWith(color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'Gracias por tu compra. Tu orden #${orderEntity.id} ha sido confirmada.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16, color: Colors.black54),
+                child: Column(
+                  children: [
+                    _row(t, 'Pedido', '#${o.id}'),
+                    if (pickup) _row(t, 'Código para recoger', o.pickupCode),
+                    _row(t, 'Pago', o.paymentLabel),
+                    _row(t, 'Total', formatCop(o.total)),
+                  ],
                 ),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Detalles del Pedido',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Tienda:'),
-                          Text(
-                            orderEntity.storeName,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Monto Total:'),
-                          Text(
-                            '\$${orderEntity.totalAmount.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Color(0xFF4B2AAD),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Estado:'),
-                          Text(
-                            orderEntity.status.displayName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orange,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).popUntil((route) => route.isFirst);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4B2AAD),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Volver al inicio',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).popUntil((route) => route.isFirst);
-                    // TODO: Navegar a OrdersPage para ver el historial
-                  },
-                  child: const Text('Ver historial de pedidos'),
-                ),
-              ],
-            ),
+              ),
+              const Spacer(),
+              FilledButton.icon(
+                onPressed: () =>
+                    context.pushReplacement(AppRoutes.orderTrackingPath(o.id)),
+                icon: const Icon(Icons.track_changes_rounded),
+                label: const Text('Seguir mi pedido'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => context.go(AppRoutes.home),
+                child: const Text('Volver al inicio'),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+
+  Widget _row(TextTheme t, String a, String b) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      children: [
+        Text(a, style: t.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+        const Spacer(),
+        Text(b, style: t.titleSmall),
+      ],
+    ),
+  );
 }

@@ -13,8 +13,8 @@ class BankDataCubit extends Cubit<BankDataState> {
     accountType: 'Cuenta Corriente',
     bankCode: 'BP001',
     isVerified: true,
-    availableBalance: 2450.00,
-    totalEarnings: 12450.00,
+    availableBalance: 2450000,
+    totalEarnings: 12450000,
     createdAt: DateTime.now(),
   );
 

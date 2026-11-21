@@ -1,19 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../viewmodels/login/login_cubit.dart';
-import '../../viewmodels/login/login_state.dart';
-import '../../viewmodels/password_recovery/password_recovery_cubit.dart';
-import '../../viewmodels/auth/auth_cubit.dart';
-import '../../viewmodels/product/product_cubit.dart';
-import '../home_page.dart';
-import 'package:unimarket/core/injection_container.dart';
-import '../../viewmodels/registration/registration_cubit.dart';
-import '../../../core/utils/responsive_helper.dart';
-import '../../../core/utils/responsive_constants.dart';
-import 'package:unimarket/presentation/pages/registration/registration_page.dart';
-import 'package:unimarket/presentation/pages/password_recovery/password_recovery_page.dart';
-import 'package:unimarket/core/utils/notification_helper.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../constants/app_colors.dart';
+import '../../../core/router/app_routes.dart';
+import '../../../domain/entities/user_role.dart';
+import '../../viewmodels/auth/auth_cubit.dart';
+
+/// Inicio de sesión (Figma: "Login").
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -22,435 +16,253 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  bool _obscurePassword = true;
+  final _formKey = GlobalKey<FormState>();
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  bool _obscure = true;
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    final auth = context.read<AuthCubit>();
+    await auth.login(_email.text.trim(), _password.text);
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      if (!auth.isAuthenticated()) {
+        _error =
+            'Correo o contraseña incorrectos. Revisa los datos e inténtalo de nuevo.';
+      }
+    });
+    // Si inicia sesión, el router lo lleva a la pantalla de su rol.
+  }
+
+  InputDecoration _dec(String label, IconData icon, {Widget? suffix}) =>
+      InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Colors.white70),
+        suffixIcon: suffix,
+        labelStyle: const TextStyle(color: Colors.white70),
+        floatingLabelStyle: const TextStyle(color: AppColors.accent),
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.08),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Colors.white54),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.accent, width: 1.6),
+        ),
+        errorStyle: const TextStyle(color: AppColors.accent),
+      );
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-          child: BlocConsumer<LoginCubit, LoginState>(
-            listener: (context, state) async {
-              if (state is LoginFailure) {
-                NotificationHelper.showError(
-                  context: context,
-                  message: state.message,
-                );
-              }
-              if (state is LoginSuccess) {
-                // Attempt to authenticate via AuthCubit (mocked test credentials)
-                await sl<AuthCubit>().login(
-                  _emailController.text.trim(),
-                  _passwordController.text.trim(),
-                );
-                if (!context.mounted) return;
-                if (sl<AuthCubit>().isAuthenticated()) {
-                  final user = sl<AuthCubit>().currentUser;
-                  final welcomeMessage = _getWelcomeMessage(user?.role.toString() ?? '');
-                  
-                  NotificationHelper.showSuccess(
-                    context: context,
-                    message: welcomeMessage,
-                    duration: const Duration(seconds: 2),
-                  );
-                  
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => BlocProvider(
-                        create: (_) => sl<ProductCubit>(),
-                        child: const HomePage(),
-                      ),
-                    ),
-                  );
-                } else {
-                  NotificationHelper.showError(
-                    context: context,
-                    message: 'Credenciales inválidas. Usa 1234 / 1234',
-                  );
-                }
-              }
-            },
-            builder: (context, state) {
-              final isLoading = state is LoginLoading;
-              final screenHeight = ResponsiveHelper.getScreenHeight(context);
-              final isMobile = ResponsiveHelper.isMobile(context);
-              final titleFontSize = ResponsiveHelper.getFontSize(
-                context,
-                mobileSize: ResponsiveConstants.font2XLarge,
-              );
-              final labelFontSize = ResponsiveHelper.getFontSize(
-                context,
-                mobileSize: ResponsiveConstants.fontMedium,
-              );
-              
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: screenHeight - 100),
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.purpleGradient),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Form(
+                  key: _formKey,
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      SizedBox(
-                        height: ResponsiveHelper.getPadding(
-                          context,
-                          mobilePadding: ResponsiveConstants.paddingLarge,
+                      Center(
+                        child: Image.asset(
+                          'lib/assets/images/LOGO_UNIMARKET.png',
+                          width: 130,
                         ),
                       ),
-                      Text(
+                      const SizedBox(height: 28),
+                      const Text(
                         '¡Bienvenido!',
                         style: TextStyle(
-                          fontSize: titleFontSize,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue[900],
+                          color: AppColors.accent,
+                          fontSize: 30,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      SizedBox(
-                        height: ResponsiveHelper.getPadding(
-                          context,
-                          mobilePadding: ResponsiveConstants.padding2XLarge,
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Inicia sesión con tu correo institucional',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 24),
+                      TextFormField(
+                        controller: _email,
+                        style: const TextStyle(color: Colors.white),
+                        keyboardType: TextInputType.emailAddress,
+                        autofillHints: const [AutofillHints.email],
+                        textInputAction: TextInputAction.next,
+                        decoration: _dec(
+                          'Correo institucional',
+                          Icons.alternate_email_rounded,
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Escribe tu correo'
+                            : null,
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _password,
+                        obscureText: _obscure,
+                        style: const TextStyle(color: Colors.white),
+                        autofillHints: const [AutofillHints.password],
+                        onFieldSubmitted: (_) => _submit(),
+                        decoration: _dec(
+                          'Contraseña',
+                          Icons.lock_outline_rounded,
+                          suffix: IconButton(
+                            tooltip: _obscure
+                                ? 'Mostrar contraseña'
+                                : 'Ocultar contraseña',
+                            onPressed: () =>
+                                setState(() => _obscure = !_obscure),
+                            icon: Icon(
+                              _obscure
+                                  ? Icons.visibility_rounded
+                                  : Icons.visibility_off_rounded,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ),
+                        validator: (v) => (v == null || v.isEmpty)
+                            ? 'Escribe tu contraseña'
+                            : null,
+                      ),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                          onPressed: () =>
+                              context.push(AppRoutes.recoverPassword),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.accent,
+                            padding: EdgeInsets.zero,
+                          ),
+                          child: const Text('¿Olvidaste tu contraseña?'),
                         ),
                       ),
-
-                      // Input fields container con ancho limitado
-                      ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: ResponsiveHelper.getMaxContentWidth(context),
+                      if (_error != null)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            _error!,
+                            style: const TextStyle(color: Colors.white),
+                          ),
                         ),
-                        child: Column(
-                          children: [
-                            _buildInputField(
-                              label: 'Usuario',
-                              hintText: '1234',
-                              controller: _emailController,
-                              keyboardType: TextInputType.text,
-                              prefixIcon: Icons.person_outline,
-                            ),
-                            SizedBox(
-                              height: ResponsiveHelper.getPadding(
-                                context,
-                                mobilePadding: ResponsiveConstants.paddingLarge,
-                              ),
-                            ),
-                            _buildInputField(
-                              label: 'Contraseña',
-                              hintText: 'Ingresa tu contraseña',
-                              controller: _passwordController,
-                              obscureText: _obscurePassword,
-                              prefixIcon: Icons.lock_outline,
-                              suffixIcon: IconButton(
-                                onPressed: () =>
-                                    setState(() => _obscurePassword = !_obscurePassword),
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              height: ResponsiveHelper.getPadding(
-                                context,
-                                mobilePadding: ResponsiveConstants.paddingMedium,
-                              ),
-                            ),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed: _navigateToPasswordRecovery,
-                                style: TextButton.styleFrom(
-                                  minimumSize: const Size(88, 44),
-                                ),
-                                child: Text(
-                                  '¿Olvidaste tu contraseña?',
-                                  style: TextStyle(
-                                    fontSize: labelFontSize,
-                                    color: Colors.blue[700],
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              height: ResponsiveHelper.getPadding(
-                                context,
-                                mobilePadding: ResponsiveConstants.padding2XLarge,
-                              ),
-                            ),
-                            // Credenciales de prueba
-                            if (isMobile)
-                              Padding(
-                                padding: EdgeInsets.only(
-                                  bottom: ResponsiveHelper.getPadding(
-                                    context,
-                                    mobilePadding: ResponsiveConstants.paddingMedium,
-                                  ),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      'Credenciales de prueba:',
-                                      style: TextStyle(
-                                        fontSize: labelFontSize * 0.85,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.grey[600],
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    SizedBox(
-                                      height: ResponsiveHelper.getPadding(
-                                        context,
-                                        mobilePadding: ResponsiveConstants.paddingSmall,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Consumidor: 1234 / 1234\nEmprendedor: emp / emp\nAdmin: admin / admin',
-                                      style: TextStyle(
-                                        fontSize: labelFontSize * 0.8,
-                                        color: Colors.grey[600],
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                            // Login button
-                            SizedBox(
-                              width: double.infinity,
-                              height: ResponsiveHelper.getButtonHeight(context),
-                              child: ElevatedButton(
-                                onPressed: isLoading
-                                    ? null
-                                    : () => context.read<LoginCubit>().login(
-                                          _emailController.text,
-                                          _passwordController.text,
-                                        ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue[800],
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      ResponsiveConstants.radiusLarge,
-                                    ),
-                                  ),
-                                  elevation: 2,
-                                  shadowColor: Colors.blue.withAlpha((0.3 * 255).round()),
-                                ),
-                                child: isLoading
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(
-                                            Colors.white,
-                                          ),
-                                        ),
-                                      )
-                                    : Text(
-                                        'Iniciar Sesión',
-                                        style: TextStyle(
-                                          fontSize: labelFontSize,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                              ),
-                            ),
-                            SizedBox(
-                              height: ResponsiveHelper.getPadding(
-                                context,
-                                mobilePadding: ResponsiveConstants.padding2XLarge,
-                              ),
-                            ),
-                            // Divider con texto
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Divider(
-                                    color: Colors.grey[300],
-                                    thickness: 1,
-                                  ),
-                                ),
-                                Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: ResponsiveHelper.getPadding(
-                                      context,
-                                      mobilePadding: ResponsiveConstants.paddingMedium,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'O',
-                                    style: TextStyle(
-                                      fontSize: labelFontSize,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Divider(
-                                    color: Colors.grey[300],
-                                    thickness: 1,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(
-                              height: ResponsiveHelper.getPadding(
-                                context,
-                                mobilePadding: ResponsiveConstants.padding2XLarge,
-                              ),
-                            ),
-                            // Signup link
-                            Wrap(
-                              alignment: WrapAlignment.center,
-                              children: [
-                                Text(
-                                  '¿No tienes cuenta? ',
-                                  style: TextStyle(
-                                    fontSize: labelFontSize,
-                                    color: Colors.grey[700],
-                                  ),
-                                ),
-                                GestureDetector(
-                                  onTap: _navigateToRegistration,
-                                  child: Text(
-                                    'Regístrate',
-                                    style: TextStyle(
-                                      fontSize: labelFontSize,
-                                      color: Colors.blue[700],
-                                      fontWeight: FontWeight.w600,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                      const SizedBox(height: 8),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.primary,
                         ),
+                        onPressed: _loading ? null : _submit,
+                        child: _loading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : const Text('Iniciar sesión'),
                       ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            '¿No tienes cuenta?',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                          TextButton(
+                            onPressed: () => context.push(AppRoutes.register),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.accent,
+                            ),
+                            child: const Text('Regístrate'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      const _DemoAccess(),
                     ],
                   ),
                 ),
-              );
-            },
+              ),
+            ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildInputField({
-    required String label,
-    required String hintText,
-    required TextEditingController controller,
-    TextInputType keyboardType = TextInputType.text,
-    bool obscureText = false,
-    IconData? prefixIcon,
-    Widget? suffixIcon,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Colors.grey[800],
+/// Accesos rápidos para probar cada rol mientras no hay backend.
+class _DemoAccess extends StatelessWidget {
+  const _DemoAccess();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget chip(String label, IconData icon, UserRole role) =>
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.white,
+            backgroundColor: Colors.white.withValues(alpha: 0.10),
+            side: const BorderSide(color: Colors.white38),
+            minimumSize: const Size(0, 40),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            shape: const StadiumBorder(),
           ),
+          onPressed: () => context.read<AuthCubit>().loginAs(role),
+          icon: Icon(icon, size: 18),
+          label: Text(label),
+        );
+    return Column(
+      children: [
+        const Text(
+          'Modo demo · entrar como',
+          style: TextStyle(color: Colors.white54, fontSize: 12),
         ),
         const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[300]!, width: 1),
-          ),
-          child: TextField(
-            controller: controller,
-            obscureText: obscureText,
-            keyboardType: keyboardType,
-            decoration: InputDecoration(
-              hintText: hintText,
-              hintStyle: TextStyle(color: Colors.grey[500], fontSize: 16),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 18,
-              ),
-              prefixIcon: prefixIcon != null
-                  ? Icon(prefixIcon, color: Colors.grey[600], size: 20)
-                  : null,
-              suffixIcon: suffixIcon,
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
+          children: [
+            chip('Cliente', Icons.person_rounded, UserRole.consumer),
+            chip(
+              'Emprendedor',
+              Icons.storefront_rounded,
+              UserRole.entrepreneur,
             ),
-            style: const TextStyle(fontSize: 16, color: Colors.black87),
-          ),
+            chip('Admin', Icons.admin_panel_settings_rounded, UserRole.admin),
+          ],
         ),
       ],
     );
-  }
-
-
-
-  // removed unused _loginUser; login uses LoginCubit directly
-
-  void _navigateToPasswordRecovery() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => BlocProvider(
-          create: (_) => sl<PasswordRecoveryCubit>(),
-          child: const PasswordRecoveryPage(),
-        ),
-      ),
-    );
-  }
-
-  void _navigateToRegistration() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => BlocProvider(
-          create: (_) => sl<RegistrationCubit>(),
-          child: const RegistrationPage(),
-        ),
-      ),
-    );
-  }
-
-
-
-  String _getWelcomeMessage(String roleString) {
-    if (roleString.contains('consumer')) {
-      return '¡Bienvenido a UniMarket! 🛍️ Disfruta comprando con nosotros';
-    } else if (roleString.contains('entrepreneur')) {
-      return '¡Hola emprendedor! 📈 Gestiona tu negocio con éxito';
-    } else if (roleString.contains('admin')) {
-      return '¡Bienvenido Admin! ⚙️ Sistema listo para administrar';
-    }
-    return '¡Bienvenido a UniMarket!';
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 }

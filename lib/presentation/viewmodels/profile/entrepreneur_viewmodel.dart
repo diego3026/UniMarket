@@ -59,7 +59,12 @@ class EntrepreneurViewModel extends ChangeNotifier {
   }
 
   Future<bool> submit() async {
-    if (businessName.isEmpty || ownerName.isEmpty || phone.isEmpty || !acceptedTerms) return false;
+    if (businessName.isEmpty ||
+        ownerName.isEmpty ||
+        phone.isEmpty ||
+        !acceptedTerms) {
+      return false;
+    }
     submitting = true;
     notifyListeners();
     // Simulate network delay
@@ -68,7 +73,8 @@ class EntrepreneurViewModel extends ChangeNotifier {
     // Simulated backend: persist request list in SharedPreferences as JSON strings
     try {
       final sp = await SharedPreferences.getInstance();
-      final existing = sp.getStringList(_kEntrepreneurRequestsKey) ?? <String>[];
+      final existing =
+          sp.getStringList(_kEntrepreneurRequestsKey) ?? <String>[];
       final timestamp = DateTime.now().toIso8601String();
       final record = jsonEncode({
         'id': 'REQ_$timestamp',

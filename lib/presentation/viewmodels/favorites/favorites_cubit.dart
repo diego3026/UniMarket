@@ -7,7 +7,7 @@ part 'favorites_state.dart';
 class FavoritesCubit extends Cubit<FavoritesState> {
   FavoritesCubit() : super(const FavoritesInitial());
 
-  List<ProductEntity> _items = [];
+  final List<ProductEntity> _items = [];
 
   List<ProductEntity> get items => _items;
 
@@ -15,7 +15,7 @@ class FavoritesCubit extends Cubit<FavoritesState> {
     emit(const FavoritesLoading());
     try {
       // TODO: Load favorites from local storage or API
-      emit(FavoritesLoaded(items: _items));
+      emit(FavoritesLoaded(items: List.unmodifiable(_items)));
     } catch (e) {
       emit(FavoritesError(message: e.toString()));
     }

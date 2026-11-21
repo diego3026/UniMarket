@@ -1,3 +1,5 @@
+import 'package:unimarket/core/utils/formatters.dart';
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:unimarket/core/injection_container.dart';
@@ -33,12 +35,11 @@ class _BankDataPageState extends State<BankDataPage> {
     return BlocProvider(
       create: (context) => sl<BankDataCubit>()..loadBankData(),
       child: Scaffold(
-        backgroundColor: Colors.white,
         appBar: AppBar(
           title: const Text('Datos Bancarios'),
           backgroundColor: Colors.white,
           elevation: 0,
-          foregroundColor: Colors.black,
+          foregroundColor: AppColors.textPrimary,
           actions: [
             TextButton(
               onPressed: () {
@@ -75,9 +76,9 @@ class _BankDataPageState extends State<BankDataPage> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    'Retiro de \$${state.amount} solicitado exitosamente',
+                    'Retiro de ${formatCop(state.amount)} solicitado exitosamente',
                   ),
-                  backgroundColor: Colors.green,
+                  backgroundColor: AppColors.success,
                 ),
               );
             }
@@ -108,7 +109,7 @@ class _BankDataPageState extends State<BankDataPage> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -129,9 +130,11 @@ class _BankDataPageState extends State<BankDataPage> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.blue[50],
+                        color: AppColors.sellerLight,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue[200]!),
+                        border: Border.all(
+                          color: AppColors.seller.withValues(alpha: 0.4),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,24 +143,24 @@ class _BankDataPageState extends State<BankDataPage> {
                             'Saldo Disponible',
                             style: TextStyle(
                               fontSize: 13,
-                              color: Colors.grey[600],
+                              color: AppColors.textSecondary,
                             ),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '\$${bankData.availableBalance.toStringAsFixed(2)}',
+                            formatCop(bankData.availableBalance),
                             style: const TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF4B2AAD),
+                              color: AppColors.seller,
                             ),
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Ganancias Totales: \$${bankData.totalEarnings.toStringAsFixed(2)}',
+                            'Ganancias Totales: ${formatCop(bankData.totalEarnings)}',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[600],
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -167,15 +170,17 @@ class _BankDataPageState extends State<BankDataPage> {
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.amber[50],
+                        color: AppColors.warningLight,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.amber[300]!),
+                        border: Border.all(
+                          color: AppColors.warning.withValues(alpha: 0.4),
+                        ),
                       ),
                       child: Row(
                         children: [
                           Icon(
                             Icons.info_outline,
-                            color: Colors.amber[700],
+                            color: AppColors.warning,
                             size: 20,
                           ),
                           const SizedBox(width: 12),
@@ -184,7 +189,7 @@ class _BankDataPageState extends State<BankDataPage> {
                               'Los pagos se depositarán en esta cuenta bancaria',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.amber[900],
+                                color: AppColors.warning,
                               ),
                             ),
                           ),
@@ -198,7 +203,7 @@ class _BankDataPageState extends State<BankDataPage> {
                           ? ElevatedButton(
                               onPressed: null,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey,
+                                backgroundColor: AppColors.textSecondary,
                               ),
                               child: const SizedBox(
                                 height: 48,
@@ -210,7 +215,7 @@ class _BankDataPageState extends State<BankDataPage> {
                           : ElevatedButton(
                               onPressed: () => _showWithdrawalDialog(context),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
+                                backgroundColor: AppColors.seller,
                                 foregroundColor: Colors.white,
                                 minimumSize: const Size(double.infinity, 48),
                               ),
@@ -242,7 +247,7 @@ class _BankDataPageState extends State<BankDataPage> {
           style: const TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Colors.grey,
+            color: AppColors.textSecondary,
           ),
         ),
         const SizedBox(height: 6),
@@ -254,18 +259,18 @@ class _BankDataPageState extends State<BankDataPage> {
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide(color: AppColors.border),
             ),
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey[200]!),
+              borderSide: BorderSide(color: AppColors.border),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF4B2AAD), width: 2),
+              borderSide: const BorderSide(color: AppColors.seller, width: 2),
             ),
             filled: true,
-            fillColor: _isEditing ? Colors.white : Colors.grey[50],
+            fillColor: _isEditing ? Colors.white : AppColors.surfaceMuted,
           ),
         ),
       ],
@@ -288,7 +293,7 @@ class _BankDataPageState extends State<BankDataPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue[50],
+                  color: AppColors.sellerLight,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Column(
@@ -296,14 +301,17 @@ class _BankDataPageState extends State<BankDataPage> {
                   children: [
                     Text(
                       'Saldo disponible',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     Text(
-                      '\$${bankDataState.bankData.availableBalance.toStringAsFixed(2)}',
+                      formatCop(bankDataState.bankData.availableBalance),
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF4B2AAD),
+                        color: AppColors.seller,
                       ),
                     ),
                   ],
@@ -328,7 +336,7 @@ class _BankDataPageState extends State<BankDataPage> {
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
             onPressed: () {
               final amount = double.tryParse(amountController.text) ?? 0;
               context.read<BankDataCubit>().requestWithdrawal(amount);

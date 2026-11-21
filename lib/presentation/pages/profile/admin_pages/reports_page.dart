@@ -1,3 +1,5 @@
+import 'package:unimarket/core/utils/formatters.dart';
+import 'package:unimarket/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:unimarket/core/injection_container.dart';
@@ -13,12 +15,11 @@ class ReportsPage extends StatelessWidget {
     return BlocProvider(
       create: (context) => sl<ReportsCubit>()..loadReports('Hoy'),
       child: Scaffold(
-        backgroundColor: Colors.white,
         appBar: AppBar(
           title: const Text('Reportes'),
           backgroundColor: Colors.white,
           elevation: 0,
-          foregroundColor: Colors.black,
+          foregroundColor: AppColors.textPrimary,
         ),
         body: BlocConsumer<ReportsCubit, ReportsState>(
           listener: (context, state) {
@@ -26,7 +27,7 @@ class ReportsPage extends StatelessWidget {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.message),
-                  backgroundColor: Colors.red,
+                  backgroundColor: AppColors.danger,
                 ),
               );
             }
@@ -61,11 +62,11 @@ class ReportsPage extends StatelessWidget {
                                     );
                                   },
                                   label: Text(period),
-                                  selectedColor: const Color(0xFF4B2AAD),
+                                  selectedColor: AppColors.primary,
                                   labelStyle: TextStyle(
                                     color: isSelected
                                         ? Colors.white
-                                        : Colors.black87,
+                                        : AppColors.textPrimary,
                                   ),
                                 ),
                               );
@@ -92,28 +93,31 @@ class ReportsPage extends StatelessWidget {
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: () async {
-                              final confirm = await DialogHelper.showConfirmationDialog(
-                                context: context,
-                                title: 'Exportar PDF',
-                                message: '¿Deseas descargar los reportes en formato PDF?',
-                                confirmText: 'Descargar',
-                                cancelText: 'Cancelar',
-                                confirmColor: Colors.red,
-                              );
+                              final confirm =
+                                  await DialogHelper.showConfirmationDialog(
+                                    context: context,
+                                    title: 'Exportar PDF',
+                                    message:
+                                        '¿Deseas descargar los reportes en formato PDF?',
+                                    confirmText: 'Descargar',
+                                    cancelText: 'Cancelar',
+                                    confirmColor: AppColors.danger,
+                                  );
                               if (confirm && context.mounted) {
                                 DialogHelper.showLoadingDialog(
                                   context: context,
                                   message: 'Generando PDF...',
                                 );
                                 context.read<ReportsCubit>().exportReportsPDF();
-                                
+
                                 Future.delayed(const Duration(seconds: 2), () {
                                   if (context.mounted) {
                                     DialogHelper.dismissLoadingDialog(context);
                                     DialogHelper.showSuccessDialog(
                                       context: context,
                                       title: 'Éxito',
-                                      message: 'El archivo PDF se ha generado correctamente.',
+                                      message:
+                                          'El archivo PDF se ha generado correctamente.',
                                     );
                                   }
                                 });
@@ -122,7 +126,7 @@ class ReportsPage extends StatelessWidget {
                             icon: const Icon(Icons.picture_as_pdf),
                             label: const Text('PDF'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
+                              backgroundColor: AppColors.danger,
                               foregroundColor: Colors.white,
                             ),
                           ),
@@ -131,28 +135,33 @@ class ReportsPage extends StatelessWidget {
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: () async {
-                              final confirm = await DialogHelper.showConfirmationDialog(
-                                context: context,
-                                title: 'Exportar Excel',
-                                message: '¿Deseas descargar los reportes en formato Excel?',
-                                confirmText: 'Descargar',
-                                cancelText: 'Cancelar',
-                                confirmColor: Colors.green,
-                              );
+                              final confirm =
+                                  await DialogHelper.showConfirmationDialog(
+                                    context: context,
+                                    title: 'Exportar Excel',
+                                    message:
+                                        '¿Deseas descargar los reportes en formato Excel?',
+                                    confirmText: 'Descargar',
+                                    cancelText: 'Cancelar',
+                                    confirmColor: AppColors.success,
+                                  );
                               if (confirm && context.mounted) {
                                 DialogHelper.showLoadingDialog(
                                   context: context,
                                   message: 'Generando Excel...',
                                 );
-                                context.read<ReportsCubit>().exportReportsExcel();
-                                
+                                context
+                                    .read<ReportsCubit>()
+                                    .exportReportsExcel();
+
                                 Future.delayed(const Duration(seconds: 2), () {
                                   if (context.mounted) {
                                     DialogHelper.dismissLoadingDialog(context);
                                     DialogHelper.showSuccessDialog(
                                       context: context,
                                       title: 'Éxito',
-                                      message: 'El archivo Excel se ha generado correctamente.',
+                                      message:
+                                          'El archivo Excel se ha generado correctamente.',
                                     );
                                   }
                                 });
@@ -161,7 +170,7 @@ class ReportsPage extends StatelessWidget {
                             icon: const Icon(Icons.table_chart),
                             label: const Text('Excel'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
+                              backgroundColor: AppColors.success,
                               foregroundColor: Colors.white,
                             ),
                           ),
@@ -196,7 +205,7 @@ class ReportsPage extends StatelessWidget {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 12),
@@ -205,13 +214,17 @@ class ReportsPage extends StatelessWidget {
             Expanded(
               child: _buildMetricCard(
                 'Ventas',
-                '\$${totalSales.toStringAsFixed(0)}',
-                Colors.blue,
+                formatCop(totalSales),
+                AppColors.primary,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _buildMetricCard('Órdenes', totalOrders.toStringAsFixed(0), Colors.green),
+              child: _buildMetricCard(
+                'Órdenes',
+                totalOrders.toStringAsFixed(0),
+                AppColors.success,
+              ),
             ),
           ],
         ),
@@ -219,10 +232,20 @@ class ReportsPage extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _buildMetricCard('Usuarios', data.totalUsers.toString(), Colors.purple),
+              child: _buildMetricCard(
+                'Usuarios',
+                data.totalUsers.toString(),
+                AppColors.primary,
+              ),
             ),
             const SizedBox(width: 12),
-            Expanded(child: _buildMetricCard('Negocios', data.totalBusinesses.toString(), Colors.orange)),
+            Expanded(
+              child: _buildMetricCard(
+                'Negocios',
+                data.totalBusinesses.toString(),
+                AppColors.warning,
+              ),
+            ),
           ],
         ),
       ],
@@ -233,7 +256,7 @@ class ReportsPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
@@ -245,7 +268,7 @@ class ReportsPage extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: Colors.grey.shade600,
+              color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 8),
@@ -266,9 +289,9 @@ class ReportsPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -278,7 +301,7 @@ class ReportsPage extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
@@ -292,11 +315,11 @@ class ReportsPage extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.bar_chart, size: 40, color: Colors.grey[400]),
+                  Icon(Icons.bar_chart, size: 40, color: AppColors.textMuted),
                   const SizedBox(height: 8),
                   Text(
                     'Gráfico de ventas',
-                    style: TextStyle(color: Colors.grey.shade600),
+                    style: TextStyle(color: AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -316,14 +339,14 @@ class ReportsPage extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 12),
         ...data.topSellers.map((seller) {
           return _buildListItem(
             '${seller.rank}. ${seller.name}',
-            '\$${seller.revenue.toStringAsFixed(0)}',
+            formatCop(seller.revenue),
           );
         }),
       ],
@@ -334,9 +357,9 @@ class ReportsPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.green[50],
+        color: AppColors.successLight,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green.shade300),
+        border: Border.all(color: AppColors.success),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,7 +369,7 @@ class ReportsPage extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
@@ -361,16 +384,19 @@ class ReportsPage extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.green.shade700,
+                      color: AppColors.success,
                     ),
                   ),
                   Text(
                     'Nuevos usuarios',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
-              Icon(Icons.trending_up, color: Colors.green[700], size: 32),
+              Icon(Icons.trending_up, color: AppColors.success, size: 32),
             ],
           ),
         ],
@@ -383,27 +409,30 @@ class ReportsPage extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
+          const SizedBox(width: 8),
           Text(
             value,
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF4B2AAD),
+              color: AppColors.primary,
             ),
           ),
         ],

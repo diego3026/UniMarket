@@ -15,7 +15,7 @@ class AdminBusinessesCubit extends Cubit<AdminBusinessesState> {
       products: 45,
       sales: 234,
       rating: 4.8,
-      revenue: 12450.00,
+      revenue: 12450000,
       createdAt: DateTime(2024, 1, 15),
     ),
     AdminBusinessModel(
@@ -27,7 +27,7 @@ class AdminBusinessesCubit extends Cubit<AdminBusinessesState> {
       products: 12,
       sales: 89,
       rating: 4.5,
-      revenue: 5670.00,
+      revenue: 5670000,
       createdAt: DateTime(2024, 2, 1),
     ),
     AdminBusinessModel(
@@ -39,7 +39,7 @@ class AdminBusinessesCubit extends Cubit<AdminBusinessesState> {
       products: 78,
       sales: 156,
       rating: 4.3,
-      revenue: 8900.00,
+      revenue: 8900000,
       createdAt: DateTime(2023, 11, 20),
     ),
   ];
